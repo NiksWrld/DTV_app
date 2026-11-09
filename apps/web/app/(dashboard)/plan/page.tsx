@@ -9,15 +9,19 @@ import { apiClient } from '@/lib/api-client';
 import { getRegionForCity, SCORE_CONFIG, type RegionWeather } from '@/lib/weather-data';
 import type { PlanItem } from '@/types/dtv';
 
+// Category colors stay clear of the weather palette (green / yellow / orange / red),
+// because the timeline bars themselves show the weather.
 const CATEGORY_COLORS: Record<string, string> = {
-  muay_thai_gym: '#ef4444',
-  cooking_school: '#f97316',
-  medical: '#3b82f6',
-  visa_advisory: '#8b5cf6',
-  coworking: '#10b981',
-  insurance: '#eab308',
-  relocation: '#ec4899',
+  muay_thai_gym: '#6366f1', // indigo
+  cooking_school: '#a855f7', // purple
+  medical: '#0ea5e9', // sky
+  visa_advisory: '#64748b', // slate
+  coworking: '#14b8a6', // teal
+  insurance: '#06b6d4', // cyan
+  relocation: '#334155', // dark slate
 };
+
+const NO_WEATHER_COLOR = '#94a3b8';
 
 const CATEGORY_LABELS: Record<string, string> = {
   muay_thai_gym: 'Muay Thai',
@@ -33,6 +37,16 @@ const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Se
 
 function getColor(category: string) {
   return CATEGORY_COLORS[category] ?? '#6b7280';
+}
+
+function CategoryDot({ category }: { category: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="inline-block size-2.5 shrink-0 rounded-full"
+      style={{ backgroundColor: getColor(category) }}
+    />
+  );
 }
 
 export default function PlanPage() {
@@ -159,6 +173,9 @@ export default function PlanPage() {
           <div className="border rounded-xl overflow-hidden">
             <div className="bg-muted/50 px-4 py-2 border-b">
               <h2 className="font-medium text-sm">Timeline</h2>
+              <p className="text-xs text-muted-foreground">
+                Bar colors show the weather at each provider&rsquo;s location that month (see legend below). The dot shows the type.
+              </p>
             </div>
             <div
               className="overflow-x-auto overscroll-x-contain p-4"
@@ -198,30 +215,37 @@ export default function PlanPage() {
                     {/* Label */}
                     <div className="w-[192px] shrink-0 pr-2">
                       <p className="text-sm font-medium truncate">{item.provider_name}</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <CategoryDot category={item.provider_category} />
                         {CATEGORY_LABELS[item.provider_category] ?? item.provider_category}
                         {item.provider_location && ` · ${item.provider_location}`}
                       </p>
                     </div>
 
-                    {/* Bar grid */}
+                    {/* Bar grid: each active month shows the weather at this provider's location */}
                     <div className="flex flex-1 relative">
-                      {months.map((m) => {
-                        const active = m >= item.start_month && m < item.start_month + item.duration_months;
-                        const isFirst = m === item.start_month;
-                        const isLast = m === item.start_month + item.duration_months - 1;
-                        return (
-                          <div
-                            key={m}
-                            className="flex-1 h-8 mx-0.5"
-                            style={{
-                              backgroundColor: active ? getColor(item.provider_category) : 'transparent',
-                              borderRadius: isFirst && isLast ? '6px' : isFirst ? '6px 0 0 6px' : isLast ? '0 6px 6px 0' : '0',
-                              opacity: active ? 0.85 : 1,
-                            }}
-                          />
-                        );
-                      })}
+                      {(() => {
+                        const region = getRegionForCity(item.provider_location);
+                        return months.map((m) => {
+                          const active = m >= item.start_month && m < item.start_month + item.duration_months;
+                          const isFirst = m === item.start_month;
+                          const isLast = m === item.start_month + item.duration_months - 1;
+                          const weather = region?.months[m - 1];
+                          const color = weather ? SCORE_CONFIG[weather.score].color : NO_WEATHER_COLOR;
+                          return (
+                            <div
+                              key={m}
+                              className="flex-1 h-8 mx-0.5"
+                              title={active ? `${MONTH_NAMES[m - 1]}: ${weather ? weather.label : 'No weather data'}` : undefined}
+                              style={{
+                                backgroundColor: active ? color : 'transparent',
+                                borderRadius: isFirst && isLast ? '6px' : isFirst ? '6px 0 0 6px' : isLast ? '0 6px 6px 0' : '0',
+                                opacity: active ? 0.85 : 1,
+                              }}
+                            />
+                          );
+                        });
+                      })()}
                     </div>
 
                     {/* Controls */}
@@ -348,6 +372,10 @@ export default function PlanPage() {
                   />
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm">{item.provider_name}</p>
+                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <CategoryDot category={item.provider_category} />
+                      {CATEGORY_LABELS[item.provider_category] ?? item.provider_category}
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       Month {item.start_month}–{item.start_month + item.duration_months - 1}
                       {' · '}{item.duration_months} month{item.duration_months !== 1 ? 's' : ''}

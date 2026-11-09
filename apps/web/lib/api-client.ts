@@ -80,6 +80,7 @@ export const apiClient = {
         has_dependents: boolean;
         passport_expiry?: string | null;
         preferred_embassy_id?: string | null;
+        embassy_overridden?: boolean;
       }>('GET', '/api/onboarding/profile'),
     createProfile: (data: Record<string, unknown>) =>
       request<{ id: string }>('POST', '/api/onboarding/profile', data),
@@ -88,9 +89,15 @@ export const apiClient = {
   },
   embassies: {
     list: () =>
-      request<Array<{ id: string; country: string; city: string; name: string }>>(
+      request<Array<{ id: string; country: string; city: string; name: string; website_url?: string; notes?: string }>>(
         'GET',
         '/api/embassies',
+      ),
+    match: (country: string, city?: string) =>
+      request<{ id: string; country: string; city: string; name: string; website_url?: string; notes?: string } | null>(
+        'POST',
+        '/api/embassies/match',
+        { country, city },
       ),
   },
   checklist: {

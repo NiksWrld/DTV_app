@@ -17,6 +17,7 @@ pub struct ApplicantProfile {
     pub soft_power_interest: Option<String>,
     pub employment_type: Option<String>,
     pub passport_expiry: Option<chrono::NaiveDate>,
+    pub embassy_overridden: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -33,6 +34,7 @@ pub struct CreateProfileRequest {
     pub soft_power_interest: Option<String>,
     pub employment_type: Option<String>,
     pub passport_expiry: Option<chrono::NaiveDate>,
+    pub embassy_overridden: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -47,9 +49,10 @@ pub struct UpdateProfileRequest {
     pub soft_power_interest: Option<String>,
     pub employment_type: Option<String>,
     pub passport_expiry: Option<chrono::NaiveDate>,
+    pub embassy_overridden: Option<bool>,
 }
 
-#[derive(Debug, Serialize, FromRow)]
+#[derive(Debug, Clone, Serialize, FromRow)]
 pub struct Embassy {
     pub id: Uuid,
     pub country: String,

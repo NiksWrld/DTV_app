@@ -38,6 +38,10 @@ export default function AccountPage() {
   const [passportExpiry, setPassportExpiry] = useState('');
   const [intendedPath, setIntendedPath] = useState('workcation');
   const [hasProfile, setHasProfile] = useState(false);
+  const [embassies, setEmbassies] = useState<Array<{ id: string; name: string; city: string; country: string; website_url?: string; notes?: string }>>([]);
+  const [preferredEmbassyId, setPreferredEmbassyId] = useState('');
+  const [embassyOverride, setEmbassyOverride] = useState(false);
+  const [suggestedEmbassyId, setSuggestedEmbassyId] = useState('');
   const [saving, setSaving] = useState(false);
 
   const [uploading, setUploading] = useState(false);
@@ -57,8 +61,20 @@ export default function AccountPage() {
       setCurrentCity(profile.current_city ?? '');
       setPassportExpiry(profile.passport_expiry ? profile.passport_expiry.slice(0, 10) : '');
       setIntendedPath(profile.intended_path || 'workcation');
+      setEmbassyOverride(Boolean(profile.embassy_overridden));
+      setPreferredEmbassyId(profile.preferred_embassy_id ?? '');
     }).catch(() => setHasProfile(false));
+    apiClient.embassies.list().then(setEmbassies).catch(() => setEmbassies([]));
   }, []);
+
+  useEffect(() => {
+    if (!currentCountry) return;
+    apiClient.embassies.match(currentCountry, currentCity || undefined).then((embassy) => {
+      const id = embassy?.id ?? '';
+      setSuggestedEmbassyId(id);
+      if (!embassyOverride) setPreferredEmbassyId(id);
+    }).catch(() => {});
+  }, [currentCountry, currentCity, embassyOverride]);
 
   async function save() {
     setSaving(true);
@@ -76,6 +92,8 @@ export default function AccountPage() {
           current_city: currentCity || undefined,
           intended_path: intendedPath,
           passport_expiry: passportExpiry || undefined,
+          preferred_embassy_id: preferredEmbassyId || undefined,
+          embassy_overridden: embassyOverride,
         };
         if (hasProfile) {
           await apiClient.onboarding.updateProfile(shared);
@@ -119,6 +137,8 @@ export default function AccountPage() {
 
   if (loading) return <p className="text-muted-foreground">Loading...</p>;
   if (!account) return <p className="text-muted-foreground">Failed to load account.</p>;
+
+  const selectedEmbassy = embassies.find((embassy) => embassy.id === preferredEmbassyId);
 
   return (
     <div className="max-w-lg space-y-6">
@@ -238,6 +258,41 @@ export default function AccountPage() {
               <option value="soft_power">Soft Power (Muay Thai, courses, culture)</option>
               <option value="dependent">Dependent</option>
             </select>
+          </div>
+
+          <div id="embassy" className="space-y-2 rounded-lg border p-3">
+            <p className="text-sm font-medium">Thai embassy or consulate</p>
+            <p className="text-sm text-muted-foreground">
+              {selectedEmbassy
+                ? `${selectedEmbassy.name} · ${selectedEmbassy.city}`
+                : 'No post in the directory matches this country yet.'}
+            </p>
+            {selectedEmbassy?.notes && <p className="text-xs text-muted-foreground">{selectedEmbassy.notes}</p>}
+            {selectedEmbassy?.website_url && (
+              <a href={selectedEmbassy.website_url} className="text-sm text-primary underline" target="_blank" rel="noopener noreferrer">
+                Embassy website
+              </a>
+            )}
+            <Label htmlFor="embassy">Apply at a different post</Label>
+            <select
+              id="embassy"
+              value={preferredEmbassyId}
+              onChange={(e) => {
+                setPreferredEmbassyId(e.target.value);
+                setEmbassyOverride(e.target.value !== suggestedEmbassyId);
+              }}
+              className="w-full min-h-11 rounded-lg border bg-background px-3 text-base md:text-sm"
+            >
+              <option value="">Automatic match</option>
+              {embassies.map((embassy) => (
+                <option key={embassy.id} value={embassy.id}>{embassy.name}</option>
+              ))}
+            </select>
+            {embassyOverride && (
+              <Button type="button" variant="ghost" onClick={() => { setEmbassyOverride(false); setPreferredEmbassyId(suggestedEmbassyId); }}>
+                Use the automatic match
+              </Button>
+            )}
           </div>
 
           <Button onClick={save} disabled={saving}>

@@ -126,6 +126,7 @@ async fn main() {
         .route("/api/onboarding/profile", post(routes::onboarding::create_profile))
         .route("/api/onboarding/profile", put(routes::onboarding::update_profile))
         .route("/api/embassies", get(routes::onboarding::list_embassies))
+        .route("/api/embassies/match", post(routes::onboarding::match_embassy))
         .route("/api/checklist", get(routes::checklist::get_checklist))
         .route("/api/checklist/generate", post(routes::checklist::generate))
         .route("/api/checklist/:id/status", put(routes::checklist::update_status))

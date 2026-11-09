@@ -60,6 +60,8 @@ export default function OnboardingPage() {
   const [intendedPath, setIntendedPath] = useState('');
   const [hasDependents, setHasDependents] = useState(false);
   const [preferredEmbassyId, setPreferredEmbassyId] = useState('');
+  const [embassyOverride, setEmbassyOverride] = useState(false);
+  const [suggestedEmbassy, setSuggestedEmbassy] = useState('');
   const [intendedStayDuration, setIntendedStayDuration] = useState('');
   const [softPowerInterest, setSoftPowerInterest] = useState('');
   const [employmentType, setEmploymentType] = useState('');
@@ -69,6 +71,15 @@ export default function OnboardingPage() {
       .then(setEmbassies)
       .catch(() => toast.error('Failed to load embassies'));
   }, []);
+
+  useEffect(() => {
+    if (!currentCountry) return;
+    apiClient.embassies.match(currentCountry, currentCity || undefined).then((embassy) => {
+      const id = embassy?.id ?? '';
+      setSuggestedEmbassy(id);
+      if (!embassyOverride) setPreferredEmbassyId(id);
+    }).catch(() => {});
+  }, [currentCountry, currentCity, embassyOverride]);
 
   const progress = ((step + 1) / STEPS.length) * 100;
 
@@ -82,6 +93,7 @@ export default function OnboardingPage() {
         intended_path: intendedPath,
         has_dependents: hasDependents,
         preferred_embassy_id: preferredEmbassyId || undefined,
+        embassy_overridden: embassyOverride,
         intended_stay_duration: intendedStayDuration || undefined,
         soft_power_interest: softPowerInterest || undefined,
         employment_type: employmentType || undefined,
@@ -126,7 +138,7 @@ export default function OnboardingPage() {
         <CardHeader>
           <CardTitle>{STEPS[step]}</CardTitle>
           <CardDescription>
-            {step === 0 && 'Tell us about yourself so we can tailor the requirements.'}
+            {step === 0 && 'Nationality and where you are living now are separate. The embassy follows where you are.'}
             {step === 1 && 'Which DTV path are you applying for?'}
             {step === 2 && 'Select your embassy (optional — we\'ll use general rules if skipped).'}
             {step === 3 && 'A few more details to personalize your checklist.'}
@@ -186,11 +198,21 @@ export default function OnboardingPage() {
           )}
 
           {step === 2 && (
-            <div className="space-y-2">
-              <Label htmlFor="embassy">Embassy / Consulate</Label>
-              <Select value={preferredEmbassyId} onValueChange={(v) => setPreferredEmbassyId(v ?? '')}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select your embassy (optional)" />
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                This post covers where you live now ({currentCountry}{currentCity ? `, ${currentCity}` : ''}), not your nationality.
+              </p>
+              <Label htmlFor="embassy">Thai embassy or consulate</Label>
+              <Select
+                value={preferredEmbassyId}
+                onValueChange={(value) => {
+                  const next = value ?? '';
+                  setPreferredEmbassyId(next);
+                  setEmbassyOverride(next !== suggestedEmbassy);
+                }}
+              >
+                <SelectTrigger id="embassy">
+                  <SelectValue placeholder="We'll match one from your current location" />
                 </SelectTrigger>
                 <SelectContent>
                   {embassies.map((emb) => (
@@ -200,9 +222,13 @@ export default function OnboardingPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">
-                Selecting your embassy lets us apply location-specific requirements.
-              </p>
+              {embassyOverride ? (
+                <Button type="button" variant="ghost" onClick={() => { setEmbassyOverride(false); setPreferredEmbassyId(suggestedEmbassy); }}>
+                  Use the automatic match
+                </Button>
+              ) : (
+                <p className="text-xs text-muted-foreground">Suggested from your current location. Choose another post if you will apply elsewhere.</p>
+              )}
             </div>
           )}
 

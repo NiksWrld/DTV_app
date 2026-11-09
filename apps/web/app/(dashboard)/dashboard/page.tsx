@@ -131,7 +131,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <QuickTile href="/documents" kicker="Documents" title="Your files" />
-        <QuickTile href="/onboarding" kicker="Embassy" title="Where you apply" />
+        <QuickTile href="/account" kicker="Embassy" title="Where you apply" />
         <QuickTile href="/providers" kicker="Programs" title="Schools and gyms" />
       </div>
     </div>

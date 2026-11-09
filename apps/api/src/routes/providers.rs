@@ -68,6 +68,7 @@ pub async fn list_providers(
 
 pub async fn get_provider(
     State(state): State<Arc<AppState>>,
+    Extension(user_id): Extension<Uuid>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<Provider>, (StatusCode, Json<serde_json::Value>)> {
     let sql = format!("SELECT {} FROM providers WHERE id = $1", PROVIDER_COLS);
@@ -88,6 +89,7 @@ pub async fn get_provider(
             )
         })?;
     sign_provider_image(&state, &mut provider).await;
+    crate::routes::provider_stats::record_view(&state, id, &format!("u:{user_id}"), Some(user_id)).await;
 
     Ok(Json(provider))
 }

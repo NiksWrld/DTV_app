@@ -142,6 +142,17 @@ export interface OwnedListing {
   dtv_certified: boolean;
 }
 
+export interface ViewStats {
+  views_30d: number;
+  views_total: number;
+}
+
+export interface ProviderViewRow extends ViewStats {
+  provider_id: string;
+  claim_status: string;
+  owner_email?: string | null;
+}
+
 export interface ProviderPackage {
   id: string;
   provider_id: string;

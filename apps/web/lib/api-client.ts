@@ -51,6 +51,7 @@ export const apiClient = {
       request<{
         listing: import('@/types/dtv').OwnedListing | null;
         packages: import('@/types/dtv').ProviderPackage[];
+        stats: import('@/types/dtv').ViewStats | null;
       }>('GET', '/api/provider/me'),
     create: (data: Record<string, unknown>) =>
       request<import('@/types/dtv').OwnedListing>('POST', '/api/provider/me', data),
@@ -163,6 +164,8 @@ export const apiClient = {
         request<void>('DELETE', `/api/admin/providers/${id}`),
       verify: (id: string, status: string) =>
         request('PUT', `/api/admin/providers/${id}/verify`, { verification_status: status }),
+      stats: () =>
+        request<import('@/types/dtv').ProviderViewRow[]>('GET', '/api/admin/provider-stats'),
     },
     users: {
       list: () =>

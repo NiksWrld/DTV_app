@@ -127,11 +127,15 @@ pub async fn get_mine(
         Vec::new()
     };
 
+    let stats = match listing {
+        Some(ref listing) => Some(crate::routes::provider_stats::stats_for(&state, listing.id).await),
+        None => None,
+    };
     let listing = match listing {
         Some(listing) => Some(present_listing(&state, listing).await),
         None => None,
     };
-    Ok(Json(json!({ "listing": listing, "packages": packages })))
+    Ok(Json(json!({ "listing": listing, "packages": packages, "stats": stats })))
 }
 
 pub async fn create_listing(

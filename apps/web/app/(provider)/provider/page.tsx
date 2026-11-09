@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { toast } from 'sonner';
 import { apiClient } from '@/lib/api-client';
 import { SafeImage } from '@/components/safe-image';
-import type { OwnedListing, ProviderPackage } from '@/types/dtv';
+import type { OwnedListing, ProviderPackage, ViewStats } from '@/types/dtv';
 
 const CATEGORIES = [
   ['muay_thai_gym', 'Muay Thai gym'],
@@ -23,6 +23,7 @@ const CATEGORIES = [
 export default function ProviderDashboardPage() {
   const [listing, setListing] = useState<OwnedListing | null>(null);
   const [packages, setPackages] = useState<ProviderPackage[]>([]);
+  const [stats, setStats] = useState<ViewStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState('');
@@ -51,7 +52,10 @@ export default function ProviderDashboardPage() {
 
   useEffect(() => {
     apiClient.providerPortal.me()
-      .then((data) => applyListing(data.listing, data.packages))
+      .then((data) => {
+        applyListing(data.listing, data.packages);
+        setStats(data.stats ?? null);
+      })
       .catch((err) => toast.error(err instanceof Error ? err.message : 'Failed to load listing'))
       .finally(() => setLoading(false));
   }, []);
@@ -148,6 +152,23 @@ export default function ProviderDashboardPage() {
             : 'Create a new school or claim one that is already in the directory.'}
         </p>
       </div>
+
+      {listing && stats && (
+        <div className="grid grid-cols-2 gap-3">
+          <Card>
+            <CardContent className="pt-4">
+              <p className="text-3xl font-bold tabular-nums">{stats.views_30d}</p>
+              <p className="text-sm text-muted-foreground">DTV applicants viewed you in the last 30 days</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4">
+              <p className="text-3xl font-bold tabular-nums">{stats.views_total}</p>
+              <p className="text-sm text-muted-foreground">Profile views in total</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <Card>
         <CardHeader>

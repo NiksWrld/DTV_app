@@ -170,6 +170,7 @@ async fn main() {
         .route("/api/admin/embassy-overrides", post(routes::admin::create_override))
         .route("/api/admin/providers", get(routes::admin::list_providers_admin).post(routes::admin::create_provider))
         .route("/api/admin/providers/:id/verify", put(routes::admin::verify_provider))
+        .route("/api/admin/provider-stats", get(routes::provider_stats::list_view_stats))
         .route("/api/admin/provider-claims", get(routes::provider_portal::list_pending_claims))
         .route("/api/admin/provider-claims/:id", post(routes::provider_portal::review_claim))
         .route("/api/admin/providers/:id", put(routes::admin::update_provider).delete(routes::admin::delete_provider))

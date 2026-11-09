@@ -253,7 +253,7 @@ export default function ProviderDetailPage() {
         </div>
       )}
 
-      {provider.listing_type === 'dtv_program' && (
+      {provider.listing_type === 'dtv_program' && !provider.limited && (
         <RequestLetterCard provider={provider} packages={packages} />
       )}
 

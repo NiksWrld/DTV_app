@@ -148,6 +148,12 @@
     min-height: 2.75rem;
   }
 
+  input[type='file'].sr-only {
+    min-height: 0;
+    width: 1px;
+    height: 1px;
+  }
+
   [data-slot='button'],
   [data-slot='select-item'],
   [data-slot='tabs-trigger'] {

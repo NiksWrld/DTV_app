@@ -90,7 +90,10 @@ export const apiClient = {
         body: formData,
       });
 
-      if (!res.ok) throw new Error('Upload failed');
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Upload failed');
+      }
       return res.json();
     },
     download: (id: string) =>

@@ -124,13 +124,13 @@ export function ProviderForm({ initial = EMPTY_FORM, onSubmit, submitLabel }: Pr
             <Input id="name" value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Provider name" required />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>Category</Label>
               <select
                 value={form.category}
                 onChange={(e) => set('category', e.target.value)}
-                className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="w-full min-h-11 rounded-lg border bg-background px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:text-sm"
               >
                 <option value="muay_thai_gym">Muay Thai Gym</option>
                 <option value="cooking_school">Cooking School</option>
@@ -146,7 +146,7 @@ export function ProviderForm({ initial = EMPTY_FORM, onSubmit, submitLabel }: Pr
               <select
                 value={form.listing_type}
                 onChange={(e) => set('listing_type', e.target.value)}
-                className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="w-full min-h-11 rounded-lg border bg-background px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:text-sm"
               >
                 <option value="dtv_program">DTV Program</option>
                 <option value="useful_link">Partner / Useful Link</option>
@@ -154,13 +154,13 @@ export function ProviderForm({ initial = EMPTY_FORM, onSubmit, submitLabel }: Pr
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>Verification status</Label>
               <select
                 value={form.verification_status}
                 onChange={(e) => set('verification_status', e.target.value)}
-                className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="w-full min-h-11 rounded-lg border bg-background px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:text-sm"
               >
                 <option value="unreviewed">Unreviewed</option>
                 <option value="listed">Listed</option>
@@ -170,12 +170,12 @@ export function ProviderForm({ initial = EMPTY_FORM, onSubmit, submitLabel }: Pr
             </div>
             {isDtv && (
               <div className="space-y-1.5 flex flex-col justify-end">
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className="flex min-h-11 cursor-pointer items-center gap-3">
                   <input
                     type="checkbox"
                     checked={form.dtv_certified}
                     onChange={(e) => set('dtv_certified', e.target.checked)}
-                    className="h-4 w-4 rounded border accent-emerald-600"
+                    className="size-5 rounded border accent-emerald-600"
                   />
                   <span className="text-sm font-medium">DTV Certified</span>
                 </label>
@@ -190,7 +190,7 @@ export function ProviderForm({ initial = EMPTY_FORM, onSubmit, submitLabel }: Pr
       <Card>
         <CardHeader><CardTitle className="text-base">Location</CardTitle></CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="location">Primary location</Label>
               <Input id="location" value={form.location} onChange={(e) => set('location', e.target.value)} placeholder="e.g. Chiang Mai" />
@@ -215,16 +215,16 @@ export function ProviderForm({ initial = EMPTY_FORM, onSubmit, submitLabel }: Pr
               value={form.description}
               onChange={(e) => set('description', e.target.value)}
               placeholder="Short description shown on cards"
-              className="w-full rounded-lg border bg-background px-3 py-2 text-sm resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="w-full min-h-11 resize-none rounded-lg border bg-background px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:text-sm"
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="url">Website URL</Label>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <Input id="url" value={form.external_url} onChange={(e) => set('external_url', e.target.value)} placeholder="https://..." />
                 {form.external_url && (
-                  <a href={form.external_url} target="_blank" rel="noopener noreferrer" className="shrink-0 text-xs text-primary self-center">Open →</a>
+                  <a href={form.external_url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center text-sm text-primary">Open →</a>
                 )}
               </div>
             </div>
@@ -246,7 +246,7 @@ export function ProviderForm({ initial = EMPTY_FORM, onSubmit, submitLabel }: Pr
       {/* Pricing */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <CardTitle className="text-base">Pricing</CardTitle>
             <Button type="button" size="sm" variant="outline" onClick={addTier}>+ Add tier</Button>
           </div>
@@ -267,7 +267,7 @@ export function ProviderForm({ initial = EMPTY_FORM, onSubmit, submitLabel }: Pr
             </div>
           )}
           {form.pricing_tiers.map((tier, i) => (
-            <div key={i} className="flex items-center gap-2">
+            <div key={i} className="flex flex-wrap items-center gap-2">
               <Input
                 type="number"
                 value={tier.months}

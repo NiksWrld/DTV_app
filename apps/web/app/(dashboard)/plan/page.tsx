@@ -125,9 +125,9 @@ export default function PlanPage() {
       </div>
 
       {/* Compliance badge */}
-      <div className={`rounded-lg border p-4 flex items-center gap-3 ${isCompliant ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-yellow-500/30 bg-yellow-500/5'}`}>
+      <div className={`flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center ${isCompliant ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-yellow-500/30 bg-yellow-500/5'}`}>
         <span className="text-2xl">{isCompliant ? '✓' : '⚠'}</span>
-        <div>
+        <div className="min-w-0 flex-1">
           <p className={`font-medium ${isCompliant ? 'text-emerald-700 dark:text-emerald-400' : 'text-yellow-700 dark:text-yellow-400'}`}>
             {coveredCount} of {totalMonths} months covered
             {isCompliant ? ' — DTV minimum met' : ' — Need at least 6 months'}
@@ -138,15 +138,14 @@ export default function PlanPage() {
             </p>
           )}
         </div>
-        <div className="ml-auto text-right">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => router.push('/providers')}
-          >
-            + Add Provider
-          </Button>
-        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          className="w-full sm:w-auto"
+          onClick={() => router.push('/providers')}
+        >
+          + Add Provider
+        </Button>
       </div>
 
       {items.length === 0 ? (
@@ -161,8 +160,13 @@ export default function PlanPage() {
             <div className="bg-muted/50 px-4 py-2 border-b">
               <h2 className="font-medium text-sm">Timeline</h2>
             </div>
-            <div className="p-4 overflow-x-auto">
-              <div className="min-w-[500px]">
+            <div
+              className="overflow-x-auto overscroll-x-contain p-4"
+              tabIndex={0}
+              role="region"
+              aria-label="Plan timeline"
+            >
+              <div className="min-w-[640px]">
                 {/* Month headers */}
                 <div className="flex mb-2 pl-[200px]">
                   {months.map((m) => (
@@ -221,31 +225,36 @@ export default function PlanPage() {
                     </div>
 
                     {/* Controls */}
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div className="flex shrink-0 items-center">
                       <button
+                        type="button"
                         onClick={() => updateStartMonth(item, -1)}
-                        className="text-muted-foreground hover:text-foreground text-xs px-1"
-                        title="Shift left"
+                        className="inline-flex size-11 items-center justify-center text-muted-foreground hover:text-foreground"
+                        aria-label="Shift earlier"
                       >←</button>
                       <button
+                        type="button"
                         onClick={() => updateStartMonth(item, 1)}
-                        className="text-muted-foreground hover:text-foreground text-xs px-1"
-                        title="Shift right"
+                        className="inline-flex size-11 items-center justify-center text-muted-foreground hover:text-foreground"
+                        aria-label="Shift later"
                       >→</button>
                       <button
+                        type="button"
                         onClick={() => updateDuration(item, -1)}
-                        className="text-muted-foreground hover:text-foreground text-xs px-1 ml-1"
-                        title="Shorter"
+                        className="inline-flex size-11 items-center justify-center text-muted-foreground hover:text-foreground"
+                        aria-label="Shorten"
                       >−</button>
                       <button
+                        type="button"
                         onClick={() => updateDuration(item, 1)}
-                        className="text-muted-foreground hover:text-foreground text-xs px-1"
-                        title="Longer"
+                        className="inline-flex size-11 items-center justify-center text-muted-foreground hover:text-foreground"
+                        aria-label="Lengthen"
                       >+</button>
                       <button
+                        type="button"
                         onClick={() => remove(item.id)}
-                        className="text-destructive hover:text-destructive/80 text-xs px-1 ml-1"
-                        title="Remove"
+                        className="inline-flex size-11 items-center justify-center text-destructive hover:text-destructive/80"
+                        aria-label="Remove from plan"
                       >✕</button>
                     </div>
                   </div>
@@ -265,7 +274,7 @@ export default function PlanPage() {
                       />
                     ))}
                   </div>
-                  <div className="w-24 shrink-0" />
+                  <div className="w-[220px] shrink-0" />
                 </div>
 
                 {/* Weather rows — one per unique region in the plan */}
@@ -302,7 +311,7 @@ export default function PlanPage() {
                               );
                             })}
                           </div>
-                          <div className="w-24 shrink-0" />
+                          <div className="w-[220px] shrink-0" />
                         </div>
                       ))}
                       <div className="flex items-center gap-3 pt-1">
@@ -331,7 +340,7 @@ export default function PlanPage() {
               return (
                 <div
                   key={item.id}
-                  className="flex items-center gap-3 border rounded-lg p-3"
+                  className="flex flex-wrap items-center gap-3 rounded-lg border p-3"
                 >
                   <div
                     className="w-1 self-stretch rounded-full shrink-0"
@@ -351,8 +360,9 @@ export default function PlanPage() {
                     </Badge>
                   )}
                   <button
+                    type="button"
                     onClick={() => remove(item.id)}
-                    className="text-muted-foreground hover:text-destructive text-xs shrink-0"
+                    className="inline-flex min-h-11 items-center text-sm text-muted-foreground hover:text-destructive"
                   >
                     Remove
                   </button>
@@ -363,12 +373,12 @@ export default function PlanPage() {
 
           {/* Footer summary */}
           {totalCost > 0 && (
-            <div className="border rounded-lg p-4 flex items-center justify-between">
+            <div className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Estimated total program cost</p>
                 <p className="text-2xl font-bold">THB {totalCost.toLocaleString()}</p>
               </div>
-              <Button variant="outline" disabled>
+              <Button variant="outline" disabled className="w-full sm:w-auto">
                 Generate proof document
               </Button>
             </div>

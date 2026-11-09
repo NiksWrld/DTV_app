@@ -39,7 +39,16 @@ export default function ChecklistPage() {
     }
   }
 
-  useEffect(() => { loadChecklist(); }, []);
+  useEffect(() => {
+    apiClient.checklist.get()
+      .then((data) => setItems(data.items))
+      .catch(() =>
+        apiClient.checklist.generate()
+          .then((data) => setItems(data.items))
+          .catch(() => toast.error('Failed to load checklist. Complete onboarding first.')),
+      )
+      .finally(() => setLoading(false));
+  }, []);
 
   async function updateStatus(id: string, status: ChecklistItem['status']) {
     try {
@@ -106,9 +115,9 @@ export default function ChecklistPage() {
           return (
             <Card key={item.id} className="hover:shadow-sm transition-shadow">
               <CardContent className="pt-6">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
                       <h3 className="font-medium">{item.title}</h3>
                       <Badge variant={cfg.variant}>{cfg.label}</Badge>
                       {item.required && (
@@ -126,7 +135,7 @@ export default function ChecklistPage() {
                       </p>
                     )}
                   </div>
-                  <div className="flex gap-2 shrink-0">
+                  <div className="flex flex-wrap gap-2">
                     {item.status === 'missing' && (
                       <Button size="sm" variant="outline" onClick={() => updateStatus(item.id, 'uploaded')}>
                         Mark uploaded

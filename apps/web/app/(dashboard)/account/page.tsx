@@ -101,7 +101,7 @@ export default function AccountPage() {
         <CardHeader>
           <CardTitle className="text-base">Profile photo</CardTitle>
         </CardHeader>
-        <CardContent className="flex items-center gap-6">
+        <CardContent className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-6">
           {account.avatar_url ? (
             <img
               src={account.avatar_url}
@@ -175,7 +175,7 @@ export default function AccountPage() {
               placeholder="A short bio..."
               value={bio}
               onChange={(e) => setBio(e.target.value)}
-              className="w-full rounded-lg border bg-background px-3 py-2 text-sm resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="w-full min-h-11 resize-none rounded-lg border bg-background px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:text-sm"
             />
           </div>
 
@@ -192,7 +192,7 @@ export default function AccountPage() {
         </CardHeader>
         <CardContent className="text-sm space-y-2 text-muted-foreground">
           <p>Role: <span className="text-foreground font-medium capitalize">{account.role}</span></p>
-          <p>User ID: <span className="font-mono text-xs">{account.id}</span></p>
+          <p className="break-all">User ID: <span className="font-mono text-xs">{account.id}</span></p>
         </CardContent>
       </Card>
     </div>

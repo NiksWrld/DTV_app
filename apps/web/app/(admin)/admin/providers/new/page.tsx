@@ -18,7 +18,7 @@ export default function NewProviderPage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/admin/providers" className="text-sm text-muted-foreground hover:text-foreground">← Back</Link>
+        <Link href="/admin/providers" className="inline-flex min-h-11 items-center text-sm text-muted-foreground hover:text-foreground">← Back</Link>
         <h1 className="text-2xl font-bold mt-2">New Provider</h1>
       </div>
       <ProviderForm onSubmit={handleSubmit} submitLabel="Create provider" />

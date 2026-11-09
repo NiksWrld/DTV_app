@@ -40,8 +40,37 @@ export default function AdminUsersPage() {
         <p className="text-muted-foreground mt-1">{users.length} registered</p>
       </div>
 
-      <div className="border rounded-lg overflow-hidden">
-        <table className="w-full text-left">
+      <div className="space-y-3 md:hidden">
+        {users.map((u) => (
+          <article key={u.id} className="space-y-3 rounded-lg border p-4">
+            <div className="min-w-0">
+              <p className="font-medium break-all">{u.email}</p>
+              <p className="text-sm text-muted-foreground">{u.display_name ?? '—'}</p>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="space-y-1">
+                <Badge variant={u.role === 'admin' ? 'default' : 'secondary'} className="capitalize">
+                  {u.role}
+                </Badge>
+                <p className="text-xs text-muted-foreground">
+                  {new Date(u.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => toggleRole(u)}
+                disabled={updating === u.id}
+                className="inline-flex min-h-11 items-center text-sm font-medium text-primary disabled:opacity-50"
+              >
+                {updating === u.id ? '…' : u.role === 'admin' ? 'Revoke admin' : 'Make admin'}
+              </button>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <div className="hidden overflow-x-auto rounded-lg border md:block" tabIndex={0} role="region" aria-label="Registered users">
+        <table className="w-full min-w-[640px] text-left">
           <thead className="bg-muted/50 text-xs text-muted-foreground uppercase">
             <tr>
               <th className="py-2 px-4 font-medium">Email</th>

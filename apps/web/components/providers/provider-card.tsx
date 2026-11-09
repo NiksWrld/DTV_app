@@ -45,8 +45,8 @@ export function ProviderCard({ provider }: { provider: Provider }) {
         <CategoryPlaceholder category={provider.category} />
       )}
       <div className="p-4 space-y-2">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="font-semibold leading-tight group-hover:text-primary transition-colors">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <h3 className="min-w-0 font-semibold leading-tight break-words transition-colors group-hover:text-primary">
             {provider.name}
           </h3>
           <div className="flex gap-1 shrink-0 flex-wrap justify-end">

@@ -55,7 +55,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-dvh flex items-center justify-center px-4">
+    <main id="main" className="flex min-h-dvh items-start justify-center px-[max(1rem,env(safe-area-inset-left))] pt-[max(2.5rem,env(safe-area-inset-top))] pr-[max(1rem,env(safe-area-inset-right))] pb-[max(2rem,env(safe-area-inset-bottom))] sm:items-center">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Create your account</CardTitle>
@@ -112,6 +112,6 @@ export default function RegisterPage() {
           </p>
         </CardContent>
       </Card>
-    </div>
+    </main>
   );
 }

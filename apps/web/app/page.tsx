@@ -23,19 +23,19 @@ const paths = [
 export default function LandingPage() {
   return (
     <div className="flex flex-col min-h-dvh">
-      <header className="border-b">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <span className="text-xl font-bold text-primary">DTV Workspace</span>
-          <div className="flex gap-3">
+      <header className="border-b pt-[env(safe-area-inset-top)]">
+        <div className="mx-auto flex min-h-16 max-w-5xl flex-wrap items-center justify-between gap-2 px-[max(1rem,env(safe-area-inset-left))] py-2 pr-[max(1rem,env(safe-area-inset-right))] sm:px-6 lg:px-8">
+          <span className="text-lg font-bold whitespace-nowrap text-primary sm:text-xl">DTV Workspace</span>
+          <div className="flex gap-2">
             <Link
               href="/login"
-              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-10 px-4 py-2 hover:bg-accent hover:text-accent-foreground transition-colors"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-md px-3 text-sm font-medium whitespace-nowrap transition-colors hover:bg-accent hover:text-accent-foreground"
             >
               Log in
             </Link>
             <Link
               href="/register"
-              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md bg-primary text-primary-foreground text-sm font-medium h-10 px-4 py-2 hover:bg-primary/90 transition-colors"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium whitespace-nowrap text-primary-foreground transition-colors hover:bg-primary/90"
             >
               Get started
             </Link>
@@ -43,10 +43,10 @@ export default function LandingPage() {
         </div>
       </header>
 
-      <main className="flex-1">
-        <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28">
-          <div className="text-center space-y-6">
-            <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">
+      <main id="main" className="flex-1">
+        <section className="mx-auto max-w-5xl px-4 py-12 sm:px-6 sm:py-20 lg:px-8 lg:py-28">
+          <div className="space-y-6 text-center">
+            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
               Your Destination Thailand Visa,{' '}
               <span className="text-primary">organized</span>
             </h1>
@@ -121,8 +121,8 @@ export default function LandingPage() {
         </section>
       </main>
 
-      <footer className="border-t py-8 text-center text-sm text-muted-foreground">
-        <div className="max-w-5xl mx-auto px-4">
+      <footer className="border-t py-8 pb-[max(2rem,env(safe-area-inset-bottom))] text-center text-sm text-muted-foreground">
+        <div className="mx-auto max-w-5xl px-4">
           <p>
             DTV Workspace is a preparation tool. It is not affiliated with the Royal Thai
             Government or any embassy. Final applications are submitted via the{' '}

@@ -127,8 +127,9 @@ export default function ProviderDetailPage() {
   return (
     <div className="max-w-2xl space-y-6">
       <button
+        type="button"
         onClick={() => router.back()}
-        className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+        className="inline-flex min-h-11 items-center text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
         ← Back
       </button>
@@ -139,7 +140,7 @@ export default function ProviderDetailPage() {
           <img src={displayImage} alt={provider.name} className="w-full h-56 object-cover" />
         ) : (
           <div className={`w-full h-56 ${colorClass} flex items-center justify-center`}>
-            <span className="text-white/60 text-3xl font-bold">
+            <span className="px-4 text-center text-xl font-bold text-white/60 sm:text-3xl">
               {CATEGORY_LABELS[provider.category] ?? provider.category}
             </span>
           </div>
@@ -242,7 +243,7 @@ export default function ProviderDetailPage() {
 
         <div className="space-y-1.5">
           <Label htmlFor="external-url">Website URL</Label>
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <Input
               id="external-url"
               value={externalUrlInput}
@@ -255,7 +256,7 @@ export default function ProviderDetailPage() {
                 href={externalUrlInput}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="shrink-0 inline-flex items-center justify-center h-8 px-3 rounded-lg border text-xs hover:bg-accent transition-colors"
+                className="inline-flex h-11 shrink-0 items-center justify-center rounded-lg border px-3 text-sm transition-colors hover:bg-accent"
               >
                 Open ↗
               </a>

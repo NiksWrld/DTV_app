@@ -70,7 +70,7 @@ export default function GuidesPage() {
       />
 
       <Tabs defaultValue="guides">
-        <TabsList>
+        <TabsList className="w-full sm:w-fit">
           <TabsTrigger value="guides">Guides ({filteredGuides.length})</TabsTrigger>
           <TabsTrigger value="faq">FAQ ({filteredFaqs.length})</TabsTrigger>
         </TabsList>
@@ -88,8 +88,8 @@ export default function GuidesPage() {
               <Link key={guide.id} href={`/guides/${guide.slug}`}>
                 <Card className="hover:shadow-md transition-shadow cursor-pointer">
                   <CardHeader>
-                    <div className="flex items-center gap-2">
-                      <CardTitle className="text-base">{guide.title}</CardTitle>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <CardTitle className="text-base break-words">{guide.title}</CardTitle>
                       <Badge variant="outline" className="text-xs">
                         {typeLabels[guide.content_type] || guide.content_type}
                       </Badge>

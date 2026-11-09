@@ -113,7 +113,7 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="max-w-lg mx-auto py-8">
+    <div className="mx-auto max-w-lg py-2 sm:py-8">
       <div className="mb-8">
         <h1 className="text-2xl font-bold">Set up your profile</h1>
         <p className="text-muted-foreground mt-1">
@@ -254,13 +254,13 @@ export default function OnboardingPage() {
                 </div>
               )}
 
-              <div className="flex items-center gap-2 pt-2">
+              <div className="flex min-h-11 items-center gap-3 pt-2">
                 <input
                   type="checkbox"
                   id="hasDependents"
                   checked={hasDependents}
                   onChange={(e) => setHasDependents(e.target.checked)}
-                  className="rounded border-border"
+                  className="size-5 rounded border-border"
                 />
                 <Label htmlFor="hasDependents" className="cursor-pointer">
                   I am applying with dependents (spouse / children)

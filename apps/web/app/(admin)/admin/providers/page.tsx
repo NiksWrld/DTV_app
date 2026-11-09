@@ -21,6 +21,137 @@ const STATUS_COLORS: Record<string, string> = {
   featured: 'bg-amber-100 text-amber-700',
 };
 
+function ProviderRow({
+  provider,
+  deleting,
+  onDelete,
+}: {
+  provider: Provider;
+  deleting: string | null;
+  onDelete: (provider: Provider) => void;
+}) {
+  return (
+    <tr className="border-b transition-colors hover:bg-muted/30">
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-3">
+          {provider.image_url
+            ? <img src={provider.image_url} alt="" className="size-10 shrink-0 rounded border object-cover" />
+            : <div className="size-10 shrink-0 rounded bg-muted" />
+          }
+          <div className="min-w-0">
+            <p className="text-sm font-medium break-words">{provider.name}</p>
+            {provider.location && <p className="text-xs text-muted-foreground">{provider.location}</p>}
+          </div>
+        </div>
+      </td>
+      <td className="px-4 py-3 text-sm text-muted-foreground">
+        {CATEGORY_LABELS[provider.category] ?? provider.category}
+      </td>
+      <td className="px-4 py-3">
+        <div className="flex flex-wrap gap-1">
+          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[provider.verification_status] ?? STATUS_COLORS.unreviewed}`}>
+            {provider.verification_status}
+          </span>
+          {provider.dtv_certified && (
+            <Badge className="bg-emerald-600 text-xs text-white hover:bg-emerald-600">DTV Certified</Badge>
+          )}
+        </div>
+      </td>
+      <td className="px-4 py-3 text-right">
+        <div className="flex justify-end gap-2">
+          <Link href={`/admin/providers/${provider.id}`}>
+            <Button size="sm" variant="outline">Edit</Button>
+          </Link>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-destructive hover:bg-destructive/10"
+            onClick={() => onDelete(provider)}
+            disabled={deleting === provider.id}
+          >
+            {deleting === provider.id ? '…' : 'Delete'}
+          </Button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function ProviderGroup({
+  rows,
+  title,
+  deleting,
+  onDelete,
+}: {
+  rows: Provider[];
+  title: string;
+  deleting: string | null;
+  onDelete: (provider: Provider) => void;
+}) {
+  if (rows.length === 0) return null;
+  return (
+    <div className="space-y-2">
+      <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">{title}</h2>
+      <div className="space-y-3 md:hidden">
+        {rows.map((provider) => (
+          <article key={provider.id} className="space-y-3 rounded-lg border p-4">
+            <div className="flex items-start gap-3">
+              {provider.image_url
+                ? <img src={provider.image_url} alt="" className="size-12 shrink-0 rounded border object-cover" />
+                : <div className="size-12 shrink-0 rounded bg-muted" />
+              }
+              <div className="min-w-0">
+                <p className="font-medium break-words">{provider.name}</p>
+                {provider.location && <p className="text-xs text-muted-foreground">{provider.location}</p>}
+                <p className="text-xs text-muted-foreground">{CATEGORY_LABELS[provider.category] ?? provider.category}</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[provider.verification_status] ?? STATUS_COLORS.unreviewed}`}>
+                {provider.verification_status}
+              </span>
+              {provider.dtv_certified && (
+                <Badge className="bg-emerald-600 text-xs text-white hover:bg-emerald-600">DTV Certified</Badge>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link href={`/admin/providers/${provider.id}`}>
+                <Button size="sm" variant="outline">Edit</Button>
+              </Link>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-destructive hover:bg-destructive/10"
+                onClick={() => onDelete(provider)}
+                disabled={deleting === provider.id}
+              >
+                {deleting === provider.id ? '…' : 'Delete'}
+              </Button>
+            </div>
+          </article>
+        ))}
+      </div>
+      <div className="hidden overflow-x-auto rounded-lg border md:block" tabIndex={0} role="region" aria-label={title}>
+        <table className="w-full min-w-[720px] text-left">
+          <thead className="bg-muted/50 text-xs text-muted-foreground uppercase">
+            <tr>
+              <th className="px-4 py-2 font-medium">Provider</th>
+              <th className="px-4 py-2 font-medium">Category</th>
+              <th className="px-4 py-2 font-medium">Status</th>
+              <th className="px-4 py-2" />
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((provider) => (
+              <ProviderRow key={provider.id} provider={provider} deleting={deleting} onDelete={onDelete} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminProvidersPage() {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,87 +188,15 @@ export default function AdminProvidersPage() {
 
   if (loading) return <p className="text-muted-foreground">Loading…</p>;
 
-  function ProviderRow({ p }: { p: Provider }) {
-    return (
-      <tr className="border-b hover:bg-muted/30 transition-colors">
-        <td className="py-3 px-4">
-          <div className="flex items-center gap-3">
-            {p.image_url
-              ? <img src={p.image_url} alt="" className="w-10 h-10 rounded object-cover shrink-0 border" />
-              : <div className="w-10 h-10 rounded bg-muted shrink-0" />
-            }
-            <div>
-              <p className="font-medium text-sm">{p.name}</p>
-              {p.location && <p className="text-xs text-muted-foreground">{p.location}</p>}
-            </div>
-          </div>
-        </td>
-        <td className="py-3 px-4 text-sm text-muted-foreground">
-          {CATEGORY_LABELS[p.category] ?? p.category}
-        </td>
-        <td className="py-3 px-4">
-          <div className="flex gap-1 flex-wrap">
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[p.verification_status] ?? STATUS_COLORS.unreviewed}`}>
-              {p.verification_status}
-            </span>
-            {p.dtv_certified && (
-              <Badge className="text-xs bg-emerald-600 hover:bg-emerald-600 text-white">DTV Certified</Badge>
-            )}
-          </div>
-        </td>
-        <td className="py-3 px-4 text-right">
-          <div className="flex justify-end gap-2">
-            <Link href={`/admin/providers/${p.id}`}>
-              <Button size="sm" variant="outline">Edit</Button>
-            </Link>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-destructive hover:bg-destructive/10"
-              onClick={() => handleDelete(p)}
-              disabled={deleting === p.id}
-            >
-              {deleting === p.id ? '…' : 'Delete'}
-            </Button>
-          </div>
-        </td>
-      </tr>
-    );
-  }
-
-  function Table({ rows, title }: { rows: Provider[]; title: string }) {
-    if (rows.length === 0) return null;
-    return (
-      <div className="space-y-2">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">{title}</h2>
-        <div className="border rounded-lg overflow-hidden">
-          <table className="w-full text-left">
-            <thead className="bg-muted/50 text-xs text-muted-foreground uppercase">
-              <tr>
-                <th className="py-2 px-4 font-medium">Provider</th>
-                <th className="py-2 px-4 font-medium">Category</th>
-                <th className="py-2 px-4 font-medium">Status</th>
-                <th className="py-2 px-4" />
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((p) => <ProviderRow key={p.id} p={p} />)}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Providers & Partners</h1>
           <p className="text-muted-foreground mt-1">{providers.length} total</p>
         </div>
-        <Link href="/admin/providers/new">
-          <Button>+ New provider</Button>
+        <Link href="/admin/providers/new" className="sm:shrink-0">
+          <Button className="w-full sm:w-auto">+ New provider</Button>
         </Link>
       </div>
 
@@ -145,15 +204,15 @@ export default function AdminProvidersPage() {
         placeholder="Search by name, category, city…"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        className="max-w-sm"
+        className="w-full sm:max-w-sm"
       />
 
       {filtered.length === 0 ? (
         <p className="text-muted-foreground text-sm">No providers found.</p>
       ) : (
         <div className="space-y-8">
-          <Table rows={dtv} title="DTV Programs" />
-          <Table rows={links} title="Partners & Useful Links" />
+          <ProviderGroup rows={dtv} title="DTV Programs" deleting={deleting} onDelete={handleDelete} />
+          <ProviderGroup rows={links} title="Partners & Useful Links" deleting={deleting} onDelete={handleDelete} />
         </div>
       )}
     </div>

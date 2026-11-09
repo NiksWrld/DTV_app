@@ -33,12 +33,12 @@ export default function GuideDetailPage() {
     return (
       <div className="space-y-4">
         <h1 className="text-2xl font-bold">Guide not found</h1>
-        <a
+        <Link
           href="/guides"
-          className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md border border-input bg-background text-sm font-medium h-10 px-4 py-2 hover:bg-accent hover:text-accent-foreground transition-colors"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-input bg-background px-4 text-sm font-medium whitespace-nowrap transition-colors hover:bg-accent hover:text-accent-foreground"
         >
           Back to guides
-        </a>
+        </Link>
       </div>
     );
   }
@@ -48,15 +48,15 @@ export default function GuideDetailPage() {
 
   return (
     <div className="max-w-3xl space-y-6">
-      <a
+      <Link
         href="/guides"
-        className="inline-flex items-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-9 px-3 hover:bg-accent hover:text-accent-foreground transition-colors"
+        className="inline-flex h-11 items-center gap-2 rounded-md px-3 text-sm font-medium whitespace-nowrap transition-colors hover:bg-accent hover:text-accent-foreground"
       >
         ← Back to guides
-      </a>
+      </Link>
 
       <div>
-        <div className="flex items-center gap-2 mb-2">
+        <div className="mb-2 flex flex-wrap items-center gap-2">
           <Badge variant="outline">{guide.content_type.replace(/_/g, ' ')}</Badge>
           {guide.related_paths?.map((path) => (
             <Badge key={path} variant="secondary" className="text-xs">
@@ -64,12 +64,12 @@ export default function GuideDetailPage() {
             </Badge>
           ))}
         </div>
-        <h1 className="text-3xl font-bold">{guide.title}</h1>
+        <h1 className="text-2xl font-bold sm:text-3xl">{guide.title}</h1>
       </div>
 
       <Separator />
 
-      <div className="prose prose-sm max-w-none space-y-4">
+      <div className="max-w-none space-y-4 [overflow-wrap:anywhere]">
         {sections.map((section, i) => {
           const headingMatch = section.match(/^## (.+)$/m);
           if (headingMatch) {

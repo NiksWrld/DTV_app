@@ -46,6 +46,7 @@ export default function LoginPage() {
     <main id="main" className="flex min-h-dvh items-start justify-center px-[max(1rem,env(safe-area-inset-left))] pt-[max(2.5rem,env(safe-area-inset-top))] pr-[max(1rem,env(safe-area-inset-right))] pb-[max(2rem,env(safe-area-inset-bottom))] sm:items-center">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
+          <Link href="/" className="text-sm font-bold text-primary">DTV</Link>
           <CardTitle className="text-2xl">Welcome back</CardTitle>
           <CardDescription>Log in to your DTV Workspace</CardDescription>
         </CardHeader>

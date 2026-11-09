@@ -16,6 +16,7 @@ pub struct ApplicantProfile {
     pub intended_stay_duration: Option<String>,
     pub soft_power_interest: Option<String>,
     pub employment_type: Option<String>,
+    pub passport_expiry: Option<chrono::NaiveDate>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -31,6 +32,7 @@ pub struct CreateProfileRequest {
     pub intended_stay_duration: Option<String>,
     pub soft_power_interest: Option<String>,
     pub employment_type: Option<String>,
+    pub passport_expiry: Option<chrono::NaiveDate>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -44,6 +46,7 @@ pub struct UpdateProfileRequest {
     pub intended_stay_duration: Option<String>,
     pub soft_power_interest: Option<String>,
     pub employment_type: Option<String>,
+    pub passport_expiry: Option<chrono::NaiveDate>,
 }
 
 #[derive(Debug, Serialize, FromRow)]

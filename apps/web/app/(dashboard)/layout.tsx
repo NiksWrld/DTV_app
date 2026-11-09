@@ -41,7 +41,7 @@ const moreItems = [
   { href: '/plan', label: 'My Plan' },
   { href: '/guides', label: 'Guides' },
   { href: '/review', label: 'Review' },
-  { href: '/account', label: 'Account' },
+  { href: '/account', label: 'Profile' },
 ];
 
 type AccountSummary = { display_name?: string; email: string; avatar_url?: string; role?: string };

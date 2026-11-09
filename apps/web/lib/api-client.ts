@@ -52,8 +52,11 @@ export const apiClient = {
         id: string;
         nationality: string;
         current_country: string;
+        current_city?: string;
         intended_path: string;
         has_dependents: boolean;
+        passport_expiry?: string | null;
+        preferred_embassy_id?: string | null;
       }>('GET', '/api/onboarding/profile'),
     createProfile: (data: Record<string, unknown>) =>
       request<{ id: string }>('POST', '/api/onboarding/profile', data),

@@ -51,10 +51,11 @@ pub async fn register(
 
     // Create user
     let user = sqlx::query_as::<_, User>(
-        "INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING *",
+        "INSERT INTO users (email, password_hash, display_name) VALUES ($1, $2, $3) RETURNING *",
     )
     .bind(&req.email)
     .bind(&password_hash)
+    .bind(&req.display_name)
     .fetch_one(&state.db)
     .await
     .map_err(|e| {

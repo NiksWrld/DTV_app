@@ -41,8 +41,9 @@ pub async fn create_profile(
     let profile = sqlx::query_as::<_, ApplicantProfile>(
         r#"INSERT INTO applicant_profiles
            (user_id, nationality, current_country, current_city, intended_path, has_dependents,
-            preferred_embassy_id, intended_stay_duration, soft_power_interest, employment_type)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            preferred_embassy_id, intended_stay_duration, soft_power_interest, employment_type,
+            passport_expiry)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
            ON CONFLICT (user_id) DO UPDATE SET
              nationality = EXCLUDED.nationality,
              current_country = EXCLUDED.current_country,
@@ -53,6 +54,7 @@ pub async fn create_profile(
              intended_stay_duration = EXCLUDED.intended_stay_duration,
              soft_power_interest = EXCLUDED.soft_power_interest,
              employment_type = EXCLUDED.employment_type,
+             passport_expiry = EXCLUDED.passport_expiry,
              updated_at = NOW()
            RETURNING *"#,
     )
@@ -66,6 +68,7 @@ pub async fn create_profile(
     .bind(&req.intended_stay_duration)
     .bind(&req.soft_power_interest)
     .bind(&req.employment_type)
+    .bind(req.passport_expiry)
     .fetch_one(&state.db)
     .await
     .map_err(|e| {
@@ -113,8 +116,9 @@ pub async fn update_profile(
            intended_stay_duration = COALESCE($7, intended_stay_duration),
            soft_power_interest = COALESCE($8, soft_power_interest),
            employment_type = COALESCE($9, employment_type),
+           passport_expiry = COALESCE($10, passport_expiry),
            updated_at = NOW()
-           WHERE user_id = $10
+           WHERE user_id = $11
            RETURNING *"#,
     )
     .bind(&req.nationality)
@@ -126,6 +130,7 @@ pub async fn update_profile(
     .bind(&req.intended_stay_duration)
     .bind(&req.soft_power_interest)
     .bind(&req.employment_type)
+    .bind(req.passport_expiry)
     .bind(user_id)
     .fetch_one(&state.db)
     .await

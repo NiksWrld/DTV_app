@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,12 +25,19 @@ function Initials({ name, email }: { name?: string; email: string }) {
 }
 
 export default function AccountPage() {
+  const router = useRouter();
   const [account, setAccount] = useState<Account | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [displayName, setDisplayName] = useState('');
   const [phone, setPhone] = useState('');
   const [bio, setBio] = useState('');
+  const [nationality, setNationality] = useState('');
+  const [currentCountry, setCurrentCountry] = useState('');
+  const [currentCity, setCurrentCity] = useState('');
+  const [passportExpiry, setPassportExpiry] = useState('');
+  const [intendedPath, setIntendedPath] = useState('workcation');
+  const [hasProfile, setHasProfile] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const [uploading, setUploading] = useState(false);
@@ -42,6 +50,14 @@ export default function AccountPage() {
       setPhone(a.phone ?? '');
       setBio(a.bio ?? '');
     }).finally(() => setLoading(false));
+    apiClient.onboarding.getProfile().then((profile) => {
+      setHasProfile(true);
+      setNationality(profile.nationality ?? '');
+      setCurrentCountry(profile.current_country ?? '');
+      setCurrentCity(profile.current_city ?? '');
+      setPassportExpiry(profile.passport_expiry ? profile.passport_expiry.slice(0, 10) : '');
+      setIntendedPath(profile.intended_path || 'workcation');
+    }).catch(() => setHasProfile(false));
   }, []);
 
   async function save() {
@@ -53,6 +69,21 @@ export default function AccountPage() {
         bio: bio || undefined,
       });
       setAccount((prev) => prev ? { ...prev, ...updated } : prev);
+      if (nationality && currentCountry) {
+        const shared = {
+          nationality,
+          current_country: currentCountry,
+          current_city: currentCity || undefined,
+          intended_path: intendedPath,
+          passport_expiry: passportExpiry || undefined,
+        };
+        if (hasProfile) {
+          await apiClient.onboarding.updateProfile(shared);
+        } else {
+          await apiClient.onboarding.createProfile({ ...shared, has_dependents: false });
+          setHasProfile(true);
+        }
+      }
       toast.success('Profile updated');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to save');
@@ -92,8 +123,8 @@ export default function AccountPage() {
   return (
     <div className="max-w-lg space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Account</h1>
-        <p className="text-muted-foreground mt-1">Manage your profile and personal details</p>
+        <h1 className="text-2xl font-bold">Profile</h1>
+        <p className="text-muted-foreground mt-1">Name, where you live, and the DTV path you are preparing</p>
       </div>
 
       {/* Avatar */}
@@ -179,8 +210,49 @@ export default function AccountPage() {
             />
           </div>
 
+          <div className="space-y-1.5">
+            <Label htmlFor="nationality">Nationality</Label>
+            <Input id="nationality" value={nationality} onChange={(e) => setNationality(e.target.value)} placeholder="e.g. Germany" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="country">Country of residence</Label>
+            <Input id="country" value={currentCountry} onChange={(e) => setCurrentCountry(e.target.value)} placeholder="Where you live now" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="city">City or hometown</Label>
+            <Input id="city" value={currentCity} onChange={(e) => setCurrentCity(e.target.value)} placeholder="e.g. Berlin" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="passport-expiry">Passport expiry</Label>
+            <Input id="passport-expiry" type="date" value={passportExpiry} onChange={(e) => setPassportExpiry(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="dtv-type">DTV type</Label>
+            <select
+              id="dtv-type"
+              value={intendedPath}
+              onChange={(e) => setIntendedPath(e.target.value)}
+              className="w-full min-h-11 rounded-lg border bg-background px-3 py-2 text-base md:text-sm"
+            >
+              <option value="workcation">Remote work / workcation</option>
+              <option value="soft_power">Soft Power (Muay Thai, courses, culture)</option>
+              <option value="dependent">Dependent</option>
+            </select>
+          </div>
+
           <Button onClick={save} disabled={saving}>
             {saving ? 'Saving...' : 'Save changes'}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full text-muted-foreground"
+            onClick={() => {
+              localStorage.removeItem('token');
+              router.push('/login');
+            }}
+          >
+            Log out
           </Button>
         </CardContent>
       </Card>

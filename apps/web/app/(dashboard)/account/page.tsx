@@ -37,6 +37,7 @@ export default function AccountPage() {
   const [currentCountry, setCurrentCountry] = useState('');
   const [currentCity, setCurrentCity] = useState('');
   const [passportExpiry, setPassportExpiry] = useState('');
+  const [passportNumber, setPassportNumber] = useState('');
   const [intendedPath, setIntendedPath] = useState('workcation');
   const [hasProfile, setHasProfile] = useState(false);
   const [embassies, setEmbassies] = useState<Array<{ id: string; name: string; city: string; country: string; website_url?: string; notes?: string }>>([]);
@@ -61,6 +62,7 @@ export default function AccountPage() {
       setCurrentCountry(profile.current_country ?? '');
       setCurrentCity(profile.current_city ?? '');
       setPassportExpiry(profile.passport_expiry ? profile.passport_expiry.slice(0, 10) : '');
+      setPassportNumber(profile.passport_number ?? '');
       setIntendedPath(profile.intended_path || 'workcation');
       setEmbassyOverride(Boolean(profile.embassy_overridden));
       setPreferredEmbassyId(profile.preferred_embassy_id ?? '');
@@ -93,6 +95,7 @@ export default function AccountPage() {
           current_city: currentCity || undefined,
           intended_path: intendedPath,
           passport_expiry: passportExpiry || undefined,
+          passport_number: passportNumber.trim(),
           preferred_embassy_id: preferredEmbassyId || undefined,
           embassy_overridden: embassyOverride,
         };
@@ -239,6 +242,10 @@ export default function AccountPage() {
           <div className="space-y-1.5">
             <Label htmlFor="city">City or hometown</Label>
             <Input id="city" value={currentCity} onChange={(e) => setCurrentCity(e.target.value)} placeholder="e.g. Berlin" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="passport-number">Passport number <span className="font-normal text-muted-foreground">(optional)</span></Label>
+            <Input id="passport-number" value={passportNumber} onChange={(e) => setPassportNumber(e.target.value)} autoComplete="off" placeholder="Printed on DTV letters from schools" />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="passport-expiry">Passport expiry</Label>

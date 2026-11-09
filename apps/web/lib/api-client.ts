@@ -69,6 +69,25 @@ export const apiClient = {
     removePackage: (id: string) => request<void>('DELETE', `/api/provider/packages/${id}`),
     packages: (providerId: string) =>
       request<import('@/types/dtv').ProviderPackage[]>('GET', `/api/providers/${providerId}/packages`),
+    requests: () =>
+      request<import('@/types/dtv').Booking[]>('GET', '/api/provider/requests'),
+    approveRequest: (id: string, data: Record<string, unknown>) =>
+      request<import('@/types/dtv').Booking>('POST', `/api/provider/requests/${id}/approve`, data),
+    declineRequest: (id: string, reason?: string) =>
+      request<import('@/types/dtv').Booking>('POST', `/api/provider/requests/${id}/decline`, { reason }),
+    completeRequest: (id: string) =>
+      request<import('@/types/dtv').Booking>('POST', `/api/provider/requests/${id}/complete`, {}),
+    letter: (id: string) =>
+      request<{ url: string; filename: string }>('GET', `/api/provider/requests/${id}/letter`),
+  },
+  bookings: {
+    mine: () => request<import('@/types/dtv').Booking[]>('GET', '/api/bookings'),
+    create: (providerId: string, data: { message?: string; package_id?: string; preferred_start?: string }) =>
+      request<import('@/types/dtv').Booking>('POST', `/api/providers/${providerId}/requests`, data),
+    cancel: (id: string) =>
+      request<import('@/types/dtv').Booking>('POST', `/api/bookings/${id}/cancel`, {}),
+    letter: (id: string) =>
+      request<{ url: string; filename: string }>('GET', `/api/bookings/${id}/letter`),
   },
   onboarding: {
     getProfile: () =>
@@ -80,6 +99,7 @@ export const apiClient = {
         intended_path: string;
         has_dependents: boolean;
         passport_expiry?: string | null;
+        passport_number?: string | null;
         preferred_embassy_id?: string | null;
         embassy_overridden?: boolean;
       }>('GET', '/api/onboarding/profile'),

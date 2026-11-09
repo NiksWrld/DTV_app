@@ -13,7 +13,8 @@ const PROVIDER_COLS: &str = r#"
     id, name, category, cities_served, dtv_path_relevance, description,
     documents_they_issue, supports_dtv, verification_status, affiliate_type,
     lead_capture_settings, external_url, admin_evidence_attachments,
-    pricing, image_url, location, listing_type, dtv_certified, created_at
+    pricing, image_url, location, listing_type, dtv_certified, created_at,
+    (claim_status = 'approved' AND verification_status IN ('verified_docs_seen', 'featured')) AS is_partner
 "#;
 
 #[derive(serde::Deserialize)]

@@ -10,3 +10,4 @@ pub mod admin;
 pub mod account;
 pub mod compliance;
 pub mod provider_stats;
+pub mod bookings;

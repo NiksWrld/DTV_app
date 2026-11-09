@@ -24,6 +24,9 @@ pub struct Provider {
     pub listing_type: String,
     pub dtv_certified: bool,
     pub created_at: DateTime<Utc>,
+    /// Claimed and verified: can issue DTV letters through the app.
+    #[sqlx(default)]
+    pub is_partner: bool,
 }
 
 #[derive(Debug, FromRow, Serialize)]

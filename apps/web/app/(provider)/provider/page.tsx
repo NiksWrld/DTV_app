@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { toast } from 'sonner';
 import { apiClient } from '@/lib/api-client';
 import { SafeImage } from '@/components/safe-image';
+import { LetterRequestsCard } from '@/components/providers/letter-requests';
 import type { OwnedListing, ProviderPackage, ViewStats } from '@/types/dtv';
 
 const CATEGORIES = [
@@ -195,6 +196,13 @@ export default function ProviderDashboardPage() {
           </Button>
         </CardContent>
       </Card>
+
+      {listing && (
+        <LetterRequestsCard
+          packages={packages}
+          isPartner={listing.claim_status === 'approved' && ['verified_docs_seen', 'featured'].includes(listing.verification_status)}
+        />
+      )}
 
       {listing && (
         <>

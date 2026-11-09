@@ -16,6 +16,7 @@ import {
 import { toast } from 'sonner';
 import { apiClient } from '@/lib/api-client';
 import { SafeImage } from '@/components/safe-image';
+import { RequestLetterCard } from '@/components/providers/request-letter';
 import { getRegionForCity, getBestMonths, SCORE_CONFIG } from '@/lib/weather-data';
 import type { Provider, ProviderPackage } from '@/types/dtv';
 
@@ -219,6 +220,10 @@ export default function ProviderDetailPage() {
             </div>
           ))}
         </div>
+      )}
+
+      {provider.listing_type === 'dtv_program' && (
+        <RequestLetterCard provider={provider} packages={packages} />
       )}
 
       {/* Weather */}

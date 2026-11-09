@@ -124,6 +124,38 @@ export interface Provider {
   location?: string;
   listing_type: ListingType;
   dtv_certified: boolean;
+  is_partner?: boolean;
+}
+
+export type BookingStatus = 'requested' | 'confirmed' | 'completed' | 'declined' | 'cancelled';
+
+export interface Booking {
+  id: string;
+  provider_id: string;
+  provider_name: string;
+  user_id: string;
+  student_name?: string | null;
+  student_email: string;
+  nationality?: string | null;
+  has_passport_number: boolean;
+  package_id?: string | null;
+  package_name?: string | null;
+  status: BookingStatus;
+  message?: string | null;
+  preferred_start?: string | null;
+  course_name?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  hours_per_week?: number | null;
+  fees_paid?: number | null;
+  currency: string;
+  reference_code?: string | null;
+  letter_document_id?: string | null;
+  has_letter: boolean;
+  decline_reason?: string | null;
+  issued_at?: string | null;
+  has_review: boolean;
+  created_at: string;
 }
 
 export interface OwnedListing {

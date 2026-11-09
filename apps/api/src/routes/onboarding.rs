@@ -50,8 +50,8 @@ pub async fn create_profile(
         r#"INSERT INTO applicant_profiles
            (user_id, nationality, current_country, current_city, intended_path, has_dependents,
             preferred_embassy_id, intended_stay_duration, soft_power_interest, employment_type,
-            passport_expiry, embassy_overridden)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            passport_expiry, embassy_overridden, passport_number)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NULLIF(TRIM($13::text), ''))
            ON CONFLICT (user_id) DO UPDATE SET
              nationality = EXCLUDED.nationality,
              current_country = EXCLUDED.current_country,
@@ -64,6 +64,7 @@ pub async fn create_profile(
              employment_type = EXCLUDED.employment_type,
              passport_expiry = EXCLUDED.passport_expiry,
              embassy_overridden = EXCLUDED.embassy_overridden,
+             passport_number = COALESCE(EXCLUDED.passport_number, applicant_profiles.passport_number),
              updated_at = NOW()
            RETURNING *"#,
     )
@@ -79,6 +80,7 @@ pub async fn create_profile(
     .bind(&req.employment_type)
     .bind(req.passport_expiry)
     .bind(overridden)
+    .bind(&req.passport_number)
     .fetch_one(&state.db)
     .await
     .map_err(|e| {
@@ -138,6 +140,7 @@ pub async fn update_profile(
            employment_type = COALESCE($9, employment_type),
            passport_expiry = COALESCE($10, passport_expiry),
            embassy_overridden = $12,
+           passport_number = CASE WHEN $13::text IS NULL THEN passport_number ELSE NULLIF(TRIM($13::text), '') END,
            updated_at = NOW()
            WHERE user_id = $11
            RETURNING *"#,
@@ -154,6 +157,7 @@ pub async fn update_profile(
     .bind(req.passport_expiry)
     .bind(user_id)
     .bind(overridden)
+    .bind(&req.passport_number)
     .fetch_one(&state.db)
     .await
     .map_err(|e| {

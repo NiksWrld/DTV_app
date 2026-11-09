@@ -71,6 +71,62 @@ pub async fn remove_documents_for_item(
     Ok(())
 }
 
+/// Store a file the app generated (e.g. a provider letter) for a user. When an
+/// item is given, it replaces that item's previous files and marks it uploaded,
+/// the same as a manual upload.
+pub async fn attach_generated_document(
+    state: &AppState,
+    user_id: Uuid,
+    item_id: Option<Uuid>,
+    filename: &str,
+    data: Vec<u8>,
+    content_type: &str,
+    note: Option<&str>,
+) -> Result<Document, String> {
+    let doc_id = Uuid::new_v4();
+    let ext = if content_type == "application/pdf" { "pdf" } else { "bin" };
+    let storage_key = format!("{}/{}.{}", user_id, doc_id, ext);
+    let file_size = data.len() as i32;
+    state.storage.upload(&storage_key, data, content_type).await?;
+
+    if let Some(item_id) = item_id {
+        remove_documents_for_item(state, user_id, item_id).await?;
+    }
+
+    let doc = sqlx::query_as::<_, Document>(
+        r#"INSERT INTO documents
+           (id, user_id, checklist_item_id, filename, file_type, file_size,
+            storage_key, document_status, user_notes)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, 'uploaded', $8)
+           RETURNING *"#,
+    )
+    .bind(doc_id)
+    .bind(user_id)
+    .bind(item_id)
+    .bind(filename)
+    .bind(content_type)
+    .bind(file_size)
+    .bind(&storage_key)
+    .bind(note)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    if let Some(item_id) = item_id {
+        sqlx::query(
+            "UPDATE user_checklist_items SET status = 'uploaded', updated_at = now() \
+             WHERE id = $1 AND user_id = $2",
+        )
+        .bind(item_id)
+        .bind(user_id)
+        .execute(&state.db)
+        .await
+        .map_err(|e| e.to_string())?;
+    }
+
+    Ok(doc)
+}
+
 pub async fn list_documents(
     State(state): State<Arc<AppState>>,
     Extension(user_id): Extension<Uuid>,

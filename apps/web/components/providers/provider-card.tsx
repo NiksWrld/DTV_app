@@ -1,5 +1,8 @@
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
+import { SafeImage } from '@/components/safe-image';
+import { RatingSummary } from '@/components/providers/stars';
+import { SatBadge } from '@/components/providers/sat-badge';
 import type { Provider } from '@/types/dtv';
 
 export const CATEGORY_LABELS: Record<string, string> = {
@@ -39,14 +42,15 @@ export function ProviderCard({ provider }: { provider: Provider }) {
       href={`/providers/${provider.id}`}
       className="group block rounded-xl border bg-card hover:shadow-md transition-shadow overflow-hidden"
     >
-      {provider.image_url ? (
-        <img src={provider.image_url} alt={provider.name} className="w-full h-44 object-cover" />
-      ) : (
-        <CategoryPlaceholder category={provider.category} />
-      )}
+      <SafeImage
+        src={provider.image_url}
+        alt={provider.name}
+        className="h-44 w-full object-cover"
+        fallback={<CategoryPlaceholder category={provider.category} />}
+      />
       <div className="p-4 space-y-2">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="font-semibold leading-tight group-hover:text-primary transition-colors">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <h3 className="min-w-0 font-semibold leading-tight break-words transition-colors group-hover:text-primary">
             {provider.name}
           </h3>
           <div className="flex gap-1 shrink-0 flex-wrap justify-end">
@@ -56,15 +60,20 @@ export function ProviderCard({ provider }: { provider: Provider }) {
             {provider.affiliate_type && (
               <Badge variant="secondary" className="text-xs">Affiliate</Badge>
             )}
-            {provider.verification_status === 'verified_docs_seen' && (
-              <Badge variant="secondary" className="text-xs">Verified</Badge>
+            {provider.verification_status === 'verified_docs_seen' && !provider.limited && (
+              <Badge variant="secondary" className="text-xs">Verified DTV partner</Badge>
             )}
+            <SatBadge certified={provider.sat_certified} validUntil={provider.sat_valid_until} />
           </div>
         </div>
         <p className="text-xs text-muted-foreground">
           {CATEGORY_LABELS[provider.category] ?? provider.category}
           {provider.location && ` · ${provider.location}`}
         </p>
+        <RatingSummary average={provider.rating_avg} count={provider.rating_count} />
+        {provider.limited && (
+          <p className="text-xs font-medium text-amber-700">Not a DTV partner yet</p>
+        )}
         {provider.description && (
           <p className="text-sm text-muted-foreground line-clamp-2">{provider.description}</p>
         )}

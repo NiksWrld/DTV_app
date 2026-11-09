@@ -24,3 +24,10 @@ INSERT INTO embassies (country, city, name) VALUES
     ('Switzerland', 'Bern', 'Royal Thai Embassy, Bern'),
     ('United Arab Emirates', 'Abu Dhabi', 'Royal Thai Embassy, Abu Dhabi'),
     ('New Zealand', 'Wellington', 'Royal Thai Embassy, Wellington');
+
+-- Embassies reported to require SAT recognition for Muay Thai camps (see 019_sat_certification.sql)
+UPDATE embassies
+SET requires_sat_for_muay_thai = true,
+    sat_note = 'Reported to require that Muay Thai camps are recognised by the Sports Authority of Thailand (SAT), with a letter or documents from SAT. Rules change, so check the embassy website before applying.'
+WHERE (country = 'United States' AND city = 'Los Angeles')
+   OR (country = 'Singapore' AND city = 'Singapore');

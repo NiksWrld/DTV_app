@@ -66,6 +66,8 @@ export interface Embassy {
   name: string;
   website_url?: string;
   notes?: string;
+  requires_sat_for_muay_thai?: boolean;
+  sat_note?: string | null;
 }
 
 export interface ChecklistItem {
@@ -124,6 +126,131 @@ export interface Provider {
   location?: string;
   listing_type: ListingType;
   dtv_certified: boolean;
+  is_partner?: boolean;
+  rating_avg?: number | null;
+  rating_count?: number;
+  /** Contact details, prices, and links withheld (admin setting, not a partner yet). */
+  limited?: boolean;
+  /** Verified partners of the same type nearby, only on a limited detail view. */
+  alternatives?: Provider[];
+  /** Admin-approved Sports Authority of Thailand recognition that has not expired. */
+  sat_certified?: boolean;
+  sat_certificate_number?: string | null;
+  sat_valid_until?: string | null;
+}
+
+export type SatStatus = 'none' | 'pending' | 'approved' | 'rejected';
+
+export interface SatInfo {
+  provider_id: string;
+  provider_name: string;
+  category: string;
+  location?: string | null;
+  owner_email?: string | null;
+  sat_status: SatStatus;
+  sat_certified: boolean;
+  sat_certificate_number?: string | null;
+  sat_valid_until?: string | null;
+  sat_evidence_filename?: string | null;
+  has_evidence: boolean;
+  sat_submitted_at?: string | null;
+  sat_reviewed_at?: string | null;
+  sat_review_note?: string | null;
+}
+
+export interface AppSettings {
+  hide_unclaimed_contacts: boolean;
+}
+
+export interface Review {
+  id: string;
+  booking_id: string;
+  provider_id: string;
+  provider_name: string;
+  rating: number;
+  body?: string | null;
+  reviewer_name: string;
+  course_name?: string | null;
+  provider_reply?: string | null;
+  replied_at?: string | null;
+  hidden: boolean;
+  verified_booking: boolean;
+  created_at: string;
+  reviewer_email?: string;
+}
+
+export interface ReviewSummary {
+  average: number | null;
+  count: number;
+  reviews: Review[];
+}
+
+export type BookingStatus = 'requested' | 'confirmed' | 'completed' | 'declined' | 'cancelled';
+
+export interface Booking {
+  id: string;
+  provider_id: string;
+  provider_name: string;
+  user_id: string;
+  student_name?: string | null;
+  student_email: string;
+  nationality?: string | null;
+  has_passport_number: boolean;
+  package_id?: string | null;
+  package_name?: string | null;
+  status: BookingStatus;
+  message?: string | null;
+  preferred_start?: string | null;
+  course_name?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  hours_per_week?: number | null;
+  fees_paid?: number | null;
+  currency: string;
+  reference_code?: string | null;
+  letter_document_id?: string | null;
+  has_letter: boolean;
+  decline_reason?: string | null;
+  issued_at?: string | null;
+  has_review: boolean;
+  created_at: string;
+}
+
+export interface OwnedListing {
+  id: string;
+  name: string;
+  category: string;
+  description?: string;
+  location?: string;
+  contact_email?: string;
+  contact_phone?: string;
+  verification_status: string;
+  claim_status: string;
+  image_url?: string;
+  photo_urls?: string[];
+  listing_type: string;
+  dtv_certified: boolean;
+}
+
+export interface ViewStats {
+  views_30d: number;
+  views_total: number;
+}
+
+export interface ProviderViewRow extends ViewStats {
+  provider_id: string;
+  claim_status: string;
+  owner_email?: string | null;
+}
+
+export interface ProviderPackage {
+  id: string;
+  provider_id: string;
+  name: string;
+  description?: string;
+  price_amount?: number;
+  currency: string;
+  duration_days?: number;
 }
 
 export interface PlanItem {
@@ -134,6 +261,8 @@ export interface PlanItem {
   provider_location?: string;
   provider_image_url?: string;
   provider_pricing?: Pricing;
+  provider_sat_certified?: boolean;
+  provider_sat_valid_until?: string | null;
   start_month: number;
   duration_months: number;
   notes?: string;

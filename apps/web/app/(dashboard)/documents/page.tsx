@@ -65,7 +65,10 @@ export default function DocumentsPage() {
   }
 
   useEffect(() => {
-    loadDocs();
+    apiClient.documents.list()
+      .then(setDocs)
+      .catch(() => {})
+      .finally(() => setLoading(false));
     apiClient.checklist.get()
       .then((data) => setChecklistItems(data.items))
       .catch(() => {});
@@ -144,7 +147,7 @@ export default function DocumentsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Documents</h1>
           <p className="text-muted-foreground mt-1">
@@ -246,13 +249,13 @@ export default function DocumentsPage() {
             return (
               <Card key={doc.id}>
                 <CardContent className="pt-6">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-medium truncate">{doc.filename}</h3>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="font-medium break-all">{doc.filename}</h3>
                         <Badge variant={cfg.variant}>{cfg.label}</Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground mt-1">
+                      <p className="mt-1 text-sm text-muted-foreground">
                         {doc.file_type} · {formatBytes(doc.file_size)}
                         {doc.expiry_date && (
                           <span className="ml-2 text-warning">
@@ -261,10 +264,10 @@ export default function DocumentsPage() {
                         )}
                       </p>
                       {doc.user_notes && (
-                        <p className="text-xs text-muted-foreground mt-1">{doc.user_notes}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{doc.user_notes}</p>
                       )}
                     </div>
-                    <div className="flex gap-2 shrink-0">
+                    <div className="flex flex-wrap gap-2">
                       <Button
                         size="sm"
                         variant="outline"

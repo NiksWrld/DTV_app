@@ -1,6 +1,9 @@
 -- Seed provider directory (sample data)
 
-INSERT INTO providers (name, category, cities_served, dtv_path_relevance, description, documents_they_issue, supports_dtv, verification_status, external_url) VALUES
+-- Idempotent: rows whose name already exists are skipped, so re-running never duplicates.
+INSERT INTO providers (name, category, cities_served, dtv_path_relevance, description, documents_they_issue, supports_dtv, verification_status, external_url)
+SELECT name, category, cities_served, dtv_path_relevance, description, documents_they_issue, supports_dtv, verification_status, external_url
+FROM (VALUES
 ('Sitmonchai Gym', 'muay_thai_gym', ARRAY['Bangkok', 'Kanchanaburi']::TEXT[], ARRAY['soft_power']::TEXT[],
  'Traditional Muay Thai gym offering training programs for foreigners. DTV-friendly enrollment packages available.',
  ARRAY['Training confirmation letter', 'Enrollment certificate']::TEXT[], true, 'listed', 'https://sitmonchai.com'),
@@ -39,4 +42,8 @@ INSERT INTO providers (name, category, cities_served, dtv_path_relevance, descri
 
 ('Thai Visa Centre', 'visa_advisory', ARRAY['Bangkok', 'Chiang Mai']::TEXT[], ARRAY['workcation', 'soft_power', 'dependent']::TEXT[],
  'Dedicated DTV application support service with document checklist review.',
- ARRAY['Document checklist review', 'Application support']::TEXT[], true, 'listed', 'https://thaivisacentre.com');
+ ARRAY['Document checklist review', 'Application support']::TEXT[], true, 'listed', 'https://thaivisacentre.com')
+) AS v(name, category, cities_served, dtv_path_relevance, description, documents_they_issue, supports_dtv, verification_status, external_url)
+WHERE NOT EXISTS (
+    SELECT 1 FROM providers p WHERE lower(trim(p.name)) = lower(trim(v.name))
+);

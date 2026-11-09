@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { apiClient } from '@/lib/api-client';
+import { SafeImage } from '@/components/safe-image';
 
 type Account = Awaited<ReturnType<typeof apiClient.account.get>>;
 
@@ -24,12 +26,24 @@ function Initials({ name, email }: { name?: string; email: string }) {
 }
 
 export default function AccountPage() {
+  const router = useRouter();
   const [account, setAccount] = useState<Account | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [displayName, setDisplayName] = useState('');
   const [phone, setPhone] = useState('');
   const [bio, setBio] = useState('');
+  const [nationality, setNationality] = useState('');
+  const [currentCountry, setCurrentCountry] = useState('');
+  const [currentCity, setCurrentCity] = useState('');
+  const [passportExpiry, setPassportExpiry] = useState('');
+  const [passportNumber, setPassportNumber] = useState('');
+  const [intendedPath, setIntendedPath] = useState('workcation');
+  const [hasProfile, setHasProfile] = useState(false);
+  const [embassies, setEmbassies] = useState<Array<{ id: string; name: string; city: string; country: string; website_url?: string; notes?: string }>>([]);
+  const [preferredEmbassyId, setPreferredEmbassyId] = useState('');
+  const [embassyOverride, setEmbassyOverride] = useState(false);
+  const [suggestedEmbassyId, setSuggestedEmbassyId] = useState('');
   const [saving, setSaving] = useState(false);
 
   const [uploading, setUploading] = useState(false);
@@ -42,7 +56,28 @@ export default function AccountPage() {
       setPhone(a.phone ?? '');
       setBio(a.bio ?? '');
     }).finally(() => setLoading(false));
+    apiClient.onboarding.getProfile().then((profile) => {
+      setHasProfile(true);
+      setNationality(profile.nationality ?? '');
+      setCurrentCountry(profile.current_country ?? '');
+      setCurrentCity(profile.current_city ?? '');
+      setPassportExpiry(profile.passport_expiry ? profile.passport_expiry.slice(0, 10) : '');
+      setPassportNumber(profile.passport_number ?? '');
+      setIntendedPath(profile.intended_path || 'workcation');
+      setEmbassyOverride(Boolean(profile.embassy_overridden));
+      setPreferredEmbassyId(profile.preferred_embassy_id ?? '');
+    }).catch(() => setHasProfile(false));
+    apiClient.embassies.list().then(setEmbassies).catch(() => setEmbassies([]));
   }, []);
+
+  useEffect(() => {
+    if (!currentCountry) return;
+    apiClient.embassies.match(currentCountry, currentCity || undefined).then((embassy) => {
+      const id = embassy?.id ?? '';
+      setSuggestedEmbassyId(id);
+      if (!embassyOverride) setPreferredEmbassyId(id);
+    }).catch(() => {});
+  }, [currentCountry, currentCity, embassyOverride]);
 
   async function save() {
     setSaving(true);
@@ -53,6 +88,24 @@ export default function AccountPage() {
         bio: bio || undefined,
       });
       setAccount((prev) => prev ? { ...prev, ...updated } : prev);
+      if (nationality && currentCountry) {
+        const shared = {
+          nationality,
+          current_country: currentCountry,
+          current_city: currentCity || undefined,
+          intended_path: intendedPath,
+          passport_expiry: passportExpiry || undefined,
+          passport_number: passportNumber.trim(),
+          preferred_embassy_id: preferredEmbassyId || undefined,
+          embassy_overridden: embassyOverride,
+        };
+        if (hasProfile) {
+          await apiClient.onboarding.updateProfile(shared);
+        } else {
+          await apiClient.onboarding.createProfile({ ...shared, has_dependents: false });
+          setHasProfile(true);
+        }
+      }
       toast.success('Profile updated');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to save');
@@ -89,11 +142,13 @@ export default function AccountPage() {
   if (loading) return <p className="text-muted-foreground">Loading...</p>;
   if (!account) return <p className="text-muted-foreground">Failed to load account.</p>;
 
+  const selectedEmbassy = embassies.find((embassy) => embassy.id === preferredEmbassyId);
+
   return (
     <div className="max-w-lg space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Account</h1>
-        <p className="text-muted-foreground mt-1">Manage your profile and personal details</p>
+        <h1 className="text-2xl font-bold">Profile</h1>
+        <p className="text-muted-foreground mt-1">Name, where you live, and the DTV path you are preparing</p>
       </div>
 
       {/* Avatar */}
@@ -101,16 +156,13 @@ export default function AccountPage() {
         <CardHeader>
           <CardTitle className="text-base">Profile photo</CardTitle>
         </CardHeader>
-        <CardContent className="flex items-center gap-6">
-          {account.avatar_url ? (
-            <img
-              src={account.avatar_url}
-              alt="Avatar"
-              className="w-24 h-24 rounded-full object-cover border"
-            />
-          ) : (
-            <Initials name={account.display_name} email={account.email} />
-          )}
+        <CardContent className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-6">
+          <SafeImage
+            src={account.avatar_url}
+            alt="Avatar"
+            className="h-24 w-24 rounded-full border object-cover"
+            fallback={<Initials name={account.display_name} email={account.email} />}
+          />
           <div className="space-y-2">
             <input
               ref={avatarRef}
@@ -175,12 +227,92 @@ export default function AccountPage() {
               placeholder="A short bio..."
               value={bio}
               onChange={(e) => setBio(e.target.value)}
-              className="w-full rounded-lg border bg-background px-3 py-2 text-sm resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="w-full min-h-11 resize-none rounded-lg border bg-background px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:text-sm"
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="nationality">Nationality</Label>
+            <Input id="nationality" value={nationality} onChange={(e) => setNationality(e.target.value)} placeholder="e.g. Germany" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="country">Country of residence</Label>
+            <Input id="country" value={currentCountry} onChange={(e) => setCurrentCountry(e.target.value)} placeholder="Where you live now" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="city">City or hometown</Label>
+            <Input id="city" value={currentCity} onChange={(e) => setCurrentCity(e.target.value)} placeholder="e.g. Berlin" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="passport-number">Passport number <span className="font-normal text-muted-foreground">(optional)</span></Label>
+            <Input id="passport-number" value={passportNumber} onChange={(e) => setPassportNumber(e.target.value)} autoComplete="off" placeholder="Printed on DTV letters from schools" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="passport-expiry">Passport expiry</Label>
+            <Input id="passport-expiry" type="date" value={passportExpiry} onChange={(e) => setPassportExpiry(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="dtv-type">DTV type</Label>
+            <select
+              id="dtv-type"
+              value={intendedPath}
+              onChange={(e) => setIntendedPath(e.target.value)}
+              className="w-full min-h-11 rounded-lg border bg-background px-3 py-2 text-base md:text-sm"
+            >
+              <option value="workcation">Remote work / workcation</option>
+              <option value="soft_power">Soft Power (Muay Thai, courses, culture)</option>
+              <option value="dependent">Dependent</option>
+            </select>
+          </div>
+
+          <div id="embassy" className="space-y-2 rounded-lg border p-3">
+            <p className="text-sm font-medium">Thai embassy or consulate</p>
+            <p className="text-sm text-muted-foreground">
+              {selectedEmbassy
+                ? `${selectedEmbassy.name} · ${selectedEmbassy.city}`
+                : 'No post in the directory matches this country yet.'}
+            </p>
+            {selectedEmbassy?.notes && <p className="text-xs text-muted-foreground">{selectedEmbassy.notes}</p>}
+            {selectedEmbassy?.website_url && (
+              <a href={selectedEmbassy.website_url} className="text-sm text-primary underline" target="_blank" rel="noopener noreferrer">
+                Embassy website
+              </a>
+            )}
+            <Label htmlFor="embassy">Apply at a different post</Label>
+            <select
+              id="embassy"
+              value={preferredEmbassyId}
+              onChange={(e) => {
+                setPreferredEmbassyId(e.target.value);
+                setEmbassyOverride(e.target.value !== suggestedEmbassyId);
+              }}
+              className="w-full min-h-11 rounded-lg border bg-background px-3 text-base md:text-sm"
+            >
+              <option value="">Automatic match</option>
+              {embassies.map((embassy) => (
+                <option key={embassy.id} value={embassy.id}>{embassy.name}</option>
+              ))}
+            </select>
+            {embassyOverride && (
+              <Button type="button" variant="ghost" onClick={() => { setEmbassyOverride(false); setPreferredEmbassyId(suggestedEmbassyId); }}>
+                Use the automatic match
+              </Button>
+            )}
           </div>
 
           <Button onClick={save} disabled={saving}>
             {saving ? 'Saving...' : 'Save changes'}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full text-muted-foreground"
+            onClick={() => {
+              localStorage.removeItem('token');
+              router.push('/login');
+            }}
+          >
+            Log out
           </Button>
         </CardContent>
       </Card>
@@ -192,7 +324,7 @@ export default function AccountPage() {
         </CardHeader>
         <CardContent className="text-sm space-y-2 text-muted-foreground">
           <p>Role: <span className="text-foreground font-medium capitalize">{account.role}</span></p>
-          <p>User ID: <span className="font-mono text-xs">{account.id}</span></p>
+          <p className="break-all">User ID: <span className="font-mono text-xs">{account.id}</span></p>
         </CardContent>
       </Card>
     </div>

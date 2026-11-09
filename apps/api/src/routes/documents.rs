@@ -13,7 +13,119 @@ use crate::{
 };
 
 const MAX_FILE_SIZE: usize = 10 * 1024 * 1024; // 10 MB
-const ALLOWED_TYPES: &[&str] = &["application/pdf", "image/jpeg", "image/png"];
+
+/// Phones often send `image/jpg`, an empty type, or `application/octet-stream`.
+/// Accept the declared type when it is one we store, otherwise fall back to the filename.
+pub fn canonical_content_type(content_type: &str, filename: &str) -> Option<&'static str> {
+    let ct = content_type
+        .split(';')
+        .next()
+        .unwrap_or("")
+        .trim()
+        .to_ascii_lowercase();
+    match ct.as_str() {
+        "application/pdf" => return Some("application/pdf"),
+        "image/jpeg" | "image/jpg" | "image/pjpeg" => return Some("image/jpeg"),
+        "image/png" => return Some("image/png"),
+        _ => {}
+    }
+    let name = filename.to_ascii_lowercase();
+    if name.ends_with(".pdf") {
+        Some("application/pdf")
+    } else if name.ends_with(".png") {
+        Some("image/png")
+    } else if name.ends_with(".jpg") || name.ends_with(".jpeg") {
+        Some("image/jpeg")
+    } else {
+        None
+    }
+}
+
+pub async fn remove_documents_for_item(
+    state: &AppState,
+    user_id: Uuid,
+    item_id: Uuid,
+) -> Result<(), String> {
+    let docs = sqlx::query_as::<_, Document>(
+        "SELECT * FROM documents WHERE user_id = $1 AND checklist_item_id = $2",
+    )
+    .bind(user_id)
+    .bind(item_id)
+    .fetch_all(&state.db)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    for doc in &docs {
+        if let Err(e) = state.storage.delete(&doc.storage_key).await {
+            tracing::warn!("S3 delete failed for {}: {}", doc.storage_key, e);
+        }
+    }
+
+    sqlx::query("DELETE FROM documents WHERE user_id = $1 AND checklist_item_id = $2")
+        .bind(user_id)
+        .bind(item_id)
+        .execute(&state.db)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+/// Store a file the app generated (e.g. a provider letter) for a user. When an
+/// item is given, it replaces that item's previous files and marks it uploaded,
+/// the same as a manual upload.
+pub async fn attach_generated_document(
+    state: &AppState,
+    user_id: Uuid,
+    item_id: Option<Uuid>,
+    filename: &str,
+    data: Vec<u8>,
+    content_type: &str,
+    note: Option<&str>,
+) -> Result<Document, String> {
+    let doc_id = Uuid::new_v4();
+    let ext = if content_type == "application/pdf" { "pdf" } else { "bin" };
+    let storage_key = format!("{}/{}.{}", user_id, doc_id, ext);
+    let file_size = data.len() as i32;
+    state.storage.upload(&storage_key, data, content_type).await?;
+
+    if let Some(item_id) = item_id {
+        remove_documents_for_item(state, user_id, item_id).await?;
+    }
+
+    let doc = sqlx::query_as::<_, Document>(
+        r#"INSERT INTO documents
+           (id, user_id, checklist_item_id, filename, file_type, file_size,
+            storage_key, document_status, user_notes)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, 'uploaded', $8)
+           RETURNING *"#,
+    )
+    .bind(doc_id)
+    .bind(user_id)
+    .bind(item_id)
+    .bind(filename)
+    .bind(content_type)
+    .bind(file_size)
+    .bind(&storage_key)
+    .bind(note)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    if let Some(item_id) = item_id {
+        sqlx::query(
+            "UPDATE user_checklist_items SET status = 'uploaded', updated_at = now() \
+             WHERE id = $1 AND user_id = $2",
+        )
+        .bind(item_id)
+        .bind(user_id)
+        .execute(&state.db)
+        .await
+        .map_err(|e| e.to_string())?;
+    }
+
+    Ok(doc)
+}
 
 pub async fn list_documents(
     State(state): State<Arc<AppState>>,
@@ -94,18 +206,39 @@ pub async fn upload(
         (StatusCode::BAD_REQUEST, Json(json!({"error": "No file provided"})))
     })?;
 
-    if !ALLOWED_TYPES.contains(&content_type_str.as_str()) {
+    let fname = filename.unwrap_or_else(|| "document".to_string());
+    let Some(content_type_str) = canonical_content_type(&content_type_str, &fname) else {
         return Err((
             StatusCode::UNPROCESSABLE_ENTITY,
             Json(json!({"error": "Only PDF, JPG, and PNG files are allowed"})),
         ));
-    }
+    };
+    let content_type_str = content_type_str.to_string();
 
     if data.len() > MAX_FILE_SIZE {
         return Err((
             StatusCode::PAYLOAD_TOO_LARGE,
             Json(json!({"error": "File too large. Maximum 10 MB."})),
         ));
+    }
+
+    if let Some(item_id) = checklist_item_id {
+        let owns: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM user_checklist_items WHERE id = $1 AND user_id = $2)",
+        )
+        .bind(item_id)
+        .bind(user_id)
+        .fetch_one(&state.db)
+        .await
+        .map_err(|e| {
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("DB error: {e}")})))
+        })?;
+        if !owns {
+            return Err((
+                StatusCode::UNPROCESSABLE_ENTITY,
+                Json(json!({"error": "Checklist item not found"})),
+            ));
+        }
     }
 
     let doc_id = Uuid::new_v4();
@@ -115,7 +248,11 @@ pub async fn upload(
         _ => "jpg",
     };
     let storage_key = format!("{}/{}.{}", user_id, doc_id, ext);
-    let fname = filename.unwrap_or_else(|| format!("document.{ext}"));
+    let fname = if fname == "document" {
+        format!("document.{ext}")
+    } else {
+        fname
+    };
     let file_size = data.len() as i32;
 
     state.storage.upload(&storage_key, data, &content_type_str).await.map_err(|e| {
@@ -144,16 +281,50 @@ pub async fn upload(
         (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("DB error: {e}")})))
     })?;
 
-    // Auto-update linked checklist item to 'uploaded' if it was 'missing'
+    // A new file for this item replaces older copies and marks the item uploaded,
+    // including when it was previously accepted.
     if let Some(item_id) = checklist_item_id {
-        let _ = sqlx::query(
+        let previous = sqlx::query_as::<_, Document>(
+            "SELECT * FROM documents WHERE user_id = $1 AND checklist_item_id = $2 AND id <> $3",
+        )
+        .bind(user_id)
+        .bind(item_id)
+        .bind(doc_id)
+        .fetch_all(&state.db)
+        .await
+        .map_err(|e| {
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("DB error: {e}")})))
+        })?;
+
+        for old in &previous {
+            if let Err(e) = state.storage.delete(&old.storage_key).await {
+                tracing::warn!("S3 delete failed for {}: {}", old.storage_key, e);
+            }
+        }
+
+        sqlx::query(
+            "DELETE FROM documents WHERE user_id = $1 AND checklist_item_id = $2 AND id <> $3",
+        )
+        .bind(user_id)
+        .bind(item_id)
+        .bind(doc_id)
+        .execute(&state.db)
+        .await
+        .map_err(|e| {
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("DB error: {e}")})))
+        })?;
+
+        sqlx::query(
             "UPDATE user_checklist_items SET status = 'uploaded', updated_at = now() \
-             WHERE id = $1 AND user_id = $2 AND status = 'missing'",
+             WHERE id = $1 AND user_id = $2",
         )
         .bind(item_id)
         .bind(user_id)
         .execute(&state.db)
-        .await;
+        .await
+        .map_err(|e| {
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("DB error: {e}")})))
+        })?;
     }
 
     Ok(Json(DocumentResponse {
@@ -225,5 +396,48 @@ pub async fn delete_document(
             (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("DB error: {e}")})))
         })?;
 
+    if let Some(item_id) = doc.checklist_item_id {
+        let remaining: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM documents WHERE user_id = $1 AND checklist_item_id = $2",
+        )
+        .bind(user_id)
+        .bind(item_id)
+        .fetch_one(&state.db)
+        .await
+        .map_err(|e| {
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("DB error: {e}")})))
+        })?;
+
+        if remaining == 0 {
+            sqlx::query(
+                "UPDATE user_checklist_items SET status = 'missing', updated_at = now() \
+                 WHERE id = $1 AND user_id = $2",
+            )
+            .bind(item_id)
+            .bind(user_id)
+            .execute(&state.db)
+            .await
+            .map_err(|e| {
+                (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("DB error: {e}")})))
+            })?;
+        }
+    }
+
     Ok(Json(json!({"status": "deleted"})))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::canonical_content_type;
+
+    #[test]
+    fn phone_jpeg_aliases_are_accepted() {
+        assert_eq!(canonical_content_type("image/jpg", "scan"), Some("image/jpeg"));
+        assert_eq!(
+            canonical_content_type("application/octet-stream", "passport.PNG"),
+            Some("image/png")
+        );
+        assert_eq!(canonical_content_type("", "statement.pdf"), Some("application/pdf"));
+        assert_eq!(canonical_content_type("image/heic", "photo.heic"), None);
+    }
 }

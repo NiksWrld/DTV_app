@@ -16,6 +16,9 @@ pub struct ApplicantProfile {
     pub intended_stay_duration: Option<String>,
     pub soft_power_interest: Option<String>,
     pub employment_type: Option<String>,
+    pub passport_expiry: Option<chrono::NaiveDate>,
+    pub embassy_overridden: bool,
+    pub passport_number: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -31,6 +34,9 @@ pub struct CreateProfileRequest {
     pub intended_stay_duration: Option<String>,
     pub soft_power_interest: Option<String>,
     pub employment_type: Option<String>,
+    pub passport_expiry: Option<chrono::NaiveDate>,
+    pub embassy_overridden: Option<bool>,
+    pub passport_number: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -44,9 +50,12 @@ pub struct UpdateProfileRequest {
     pub intended_stay_duration: Option<String>,
     pub soft_power_interest: Option<String>,
     pub employment_type: Option<String>,
+    pub passport_expiry: Option<chrono::NaiveDate>,
+    pub embassy_overridden: Option<bool>,
+    pub passport_number: Option<String>,
 }
 
-#[derive(Debug, Serialize, FromRow)]
+#[derive(Debug, Clone, Serialize, FromRow)]
 pub struct Embassy {
     pub id: Uuid,
     pub country: String,
@@ -54,4 +63,8 @@ pub struct Embassy {
     pub name: String,
     pub website_url: Option<String>,
     pub notes: Option<String>,
+    #[sqlx(default)]
+    pub requires_sat_for_muay_thai: bool,
+    #[sqlx(default)]
+    pub sat_note: Option<String>,
 }

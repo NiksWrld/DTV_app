@@ -17,7 +17,10 @@ CREATE TABLE user_plan_items (
 );
 
 -- ── Seed providers ────────────────────────────────────────────────────────────
-INSERT INTO providers (name, category, cities_served, dtv_path_relevance, description, supports_dtv, verification_status, location, pricing, external_url) VALUES
+-- Idempotent: rows whose name already exists are skipped, so re-running never duplicates.
+INSERT INTO providers (name, category, cities_served, dtv_path_relevance, description, supports_dtv, verification_status, location, pricing, external_url)
+SELECT name, category, cities_served, dtv_path_relevance, description, supports_dtv, verification_status, location, pricing, external_url
+FROM (VALUES
 
 ('Fairtex Training Center',
  'muay_thai_gym',
@@ -97,4 +100,8 @@ INSERT INTO providers (name, category, cities_served, dtv_path_relevance, descri
  false, 'listed',
  'Thonglor, Bangkok',
  '{"currency":"THB","tiers":[{"months":1,"price":3900},{"months":3,"price":10500},{"months":6,"price":19000},{"months":12,"price":35000}]}'::jsonb,
- 'https://thehive.co.th');
+ 'https://thehive.co.th')
+) AS v(name, category, cities_served, dtv_path_relevance, description, supports_dtv, verification_status, location, pricing, external_url)
+WHERE NOT EXISTS (
+    SELECT 1 FROM providers p WHERE lower(trim(p.name)) = lower(trim(v.name))
+);

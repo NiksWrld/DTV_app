@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 
 export default function RegisterPage() {
   const router = useRouter();
+  const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -35,7 +36,7 @@ export default function RegisterPage() {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, display_name: displayName || undefined }),
       });
 
       if (!res.ok) {
@@ -46,7 +47,7 @@ export default function RegisterPage() {
 
       const data = await res.json();
       localStorage.setItem('token', data.token);
-      router.push('/onboarding');
+      router.push(data.user?.role === 'provider' ? '/provider' : '/onboarding');
     } catch {
       toast.error('Connection error. Please try again.');
     } finally {
@@ -55,14 +56,25 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-dvh flex items-center justify-center px-4">
+    <main id="main" className="flex min-h-dvh items-start justify-center px-[max(1rem,env(safe-area-inset-left))] pt-[max(2.5rem,env(safe-area-inset-top))] pr-[max(1rem,env(safe-area-inset-right))] pb-[max(2rem,env(safe-area-inset-bottom))] sm:items-center">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
+          <Link href="/" className="text-sm font-bold text-primary">DTV</Link>
           <CardTitle className="text-2xl">Create your account</CardTitle>
           <CardDescription>Start preparing your DTV application</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                autoComplete="name"
+                placeholder="Your name"
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -112,6 +124,6 @@ export default function RegisterPage() {
           </p>
         </CardContent>
       </Card>
-    </div>
+    </main>
   );
 }

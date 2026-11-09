@@ -70,10 +70,57 @@ pub async fn update_status(
     Path(item_id): Path<Uuid>,
     Json(req): Json<StatusUpdateRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
-    sqlx::query(
+    let Some(next) = domain::checklist::normalize_checklist_status(&req.status) else {
+        return Err((
+            StatusCode::UNPROCESSABLE_ENTITY,
+            Json(serde_json::json!({"error": "Unknown checklist status"})),
+        ));
+    };
+
+    let current = sqlx::query_as::<_, UserChecklistItem>(
+        "SELECT * FROM user_checklist_items WHERE id = $1 AND user_id = $2",
+    )
+    .bind(item_id)
+    .bind(user_id)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": format!("Database error: {}", e)})),
+        )
+    })?
+    .ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error": "Checklist item not found"})),
+        )
+    })?;
+
+    if !domain::checklist::allows_checklist_transition(&current.status, next) {
+        return Err((
+            StatusCode::CONFLICT,
+            Json(serde_json::json!({
+                "error": format!("Cannot change status from {} to {}", current.status, next)
+            })),
+        ));
+    }
+
+    if next == "missing" {
+        crate::routes::documents::remove_documents_for_item(&state, user_id, item_id)
+            .await
+            .map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({"error": format!("Failed to clear documents: {e}")})),
+                )
+            })?;
+    }
+
+    let updated = sqlx::query(
         "UPDATE user_checklist_items SET status = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3",
     )
-    .bind(&req.status)
+    .bind(next)
     .bind(item_id)
     .bind(user_id)
     .execute(&state.db)
@@ -85,5 +132,12 @@ pub async fn update_status(
         )
     })?;
 
-    Ok(Json(serde_json::json!({"status": "updated"})))
+    if updated.rows_affected() == 0 {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error": "Checklist item not found"})),
+        ));
+    }
+
+    Ok(Json(serde_json::json!({"status": next})))
 }

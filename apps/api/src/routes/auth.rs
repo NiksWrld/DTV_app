@@ -17,6 +17,21 @@ pub async fn register(
     State(state): State<Arc<AppState>>,
     Json(req): Json<RegisterRequest>,
 ) -> Result<Json<AuthResponse>, (StatusCode, Json<serde_json::Value>)> {
+    create_account(state, req, "user").await
+}
+
+pub async fn register_provider(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<RegisterRequest>,
+) -> Result<Json<AuthResponse>, (StatusCode, Json<serde_json::Value>)> {
+    create_account(state, req, "provider").await
+}
+
+async fn create_account(
+    state: Arc<AppState>,
+    req: RegisterRequest,
+    role: &str,
+) -> Result<Json<AuthResponse>, (StatusCode, Json<serde_json::Value>)> {
     // Check if user exists
     let existing = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM users WHERE email = $1")
         .bind(&req.email)
@@ -51,10 +66,12 @@ pub async fn register(
 
     // Create user
     let user = sqlx::query_as::<_, User>(
-        "INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING *",
+        "INSERT INTO users (email, password_hash, display_name, role) VALUES ($1, $2, $3, $4) RETURNING *",
     )
     .bind(&req.email)
     .bind(&password_hash)
+    .bind(&req.display_name)
+    .bind(role)
     .fetch_one(&state.db)
     .await
     .map_err(|e| {
@@ -86,7 +103,7 @@ pub async fn register(
 
     Ok(Json(AuthResponse {
         token,
-        user: user.into(),
+        user: crate::routes::account::with_fresh_avatar(&state, user).await,
     }))
 }
 
@@ -150,7 +167,7 @@ pub async fn login(
 
     Ok(Json(AuthResponse {
         token,
-        user: user.into(),
+        user: crate::routes::account::with_fresh_avatar(&state, user).await,
     }))
 }
 
@@ -175,5 +192,5 @@ pub async fn me(
             )
         })?;
 
-    Ok(Json(user.into()))
+    Ok(Json(crate::routes::account::with_fresh_avatar(&state, user).await))
 }

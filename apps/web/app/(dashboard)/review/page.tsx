@@ -16,18 +16,12 @@ export default function ReviewPage() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
 
-  async function loadReview() {
-    try {
-      const data = await apiClient.review.get();
-      setReview(data);
-    } catch {
-      setReview(null);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => { loadReview(); }, []);
+  useEffect(() => {
+    apiClient.review.get()
+      .then(setReview)
+      .catch(() => setReview(null))
+      .finally(() => setLoading(false));
+  }, []);
 
   async function handleGenerate() {
     setGenerating(true);
@@ -52,14 +46,14 @@ export default function ReviewPage() {
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Readiness Review</h1>
           <p className="text-muted-foreground mt-1">
             Check your application readiness before submitting.
           </p>
         </div>
-        <Button onClick={handleGenerate} disabled={generating}>
+        <Button onClick={handleGenerate} disabled={generating} className="w-full sm:w-auto">
           {generating ? 'Generating...' : 'Refresh review'}
         </Button>
       </div>

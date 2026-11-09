@@ -30,8 +30,8 @@ export default function EditProviderPage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/admin/providers" className="text-sm text-muted-foreground hover:text-foreground">← Back</Link>
-        <h1 className="text-2xl font-bold mt-2">Edit: {provider.name}</h1>
+        <Link href="/admin/providers" className="inline-flex min-h-11 items-center text-sm text-muted-foreground hover:text-foreground">← Back</Link>
+        <h1 className="mt-2 text-2xl font-bold break-words">Edit: {provider.name}</h1>
       </div>
       <ProviderForm
         initial={providerToForm(provider)}

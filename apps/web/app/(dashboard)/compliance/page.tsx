@@ -97,7 +97,7 @@ function StampBanner({
       <CardContent>
         {editing ? (
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Entry date</Label>
                 <Input
@@ -130,7 +130,7 @@ function StampBanner({
             </div>
           </div>
         ) : (
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm text-muted-foreground">
                 Entered Thailand <strong>{formatDate(entry!.entry_date)}</strong>
@@ -185,30 +185,34 @@ function TaskCard({
   }
 
   return (
-    <div className={`flex items-center gap-3 p-3 rounded-lg border transition-opacity ${isDone ? 'opacity-50' : ''}`}>
-      <span className="text-xl shrink-0">{meta.icon}</span>
-      <div className="flex-1 min-w-0">
-        <p className="font-medium text-sm truncate">{task.title}</p>
-        <p className="text-xs text-muted-foreground">
-          {isDone
-            ? `Done ${formatDate(task.completed_at!.slice(0, 10))}`
-            : formatDate(task.due_date)
-          }
-        </p>
+    <div className={`flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center ${isDone ? 'opacity-50' : ''}`}>
+      <div className="flex min-w-0 flex-1 items-start gap-3">
+        <span className="text-xl shrink-0">{meta.icon}</span>
+        <div className="min-w-0">
+          <p className="text-sm font-medium break-words">{task.title}</p>
+          <p className="text-xs text-muted-foreground">
+            {isDone
+              ? `Done ${formatDate(task.completed_at!.slice(0, 10))}`
+              : formatDate(task.due_date)
+            }
+          </p>
+        </div>
       </div>
-      {!isDone && (
-        <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${urgencyColor(days)}`}>
-          {days < 0 ? `${Math.abs(days)}d overdue` : days === 0 ? 'Today' : `${days}d`}
-        </span>
-      )}
-      {!isDone && (
-        <Button size="sm" variant="outline" onClick={handleComplete} disabled={completing}>
-          {completing ? '…' : 'Done'}
+      <div className="flex flex-wrap items-center gap-2">
+        {!isDone && (
+          <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${urgencyColor(days)}`}>
+            {days < 0 ? `${Math.abs(days)}d overdue` : days === 0 ? 'Today' : `${days}d`}
+          </span>
+        )}
+        {!isDone && (
+          <Button size="sm" variant="outline" onClick={handleComplete} disabled={completing}>
+            {completing ? '…' : 'Done'}
+          </Button>
+        )}
+        <Button size="sm" variant="ghost" onClick={handleDelete} disabled={deleting} className="text-muted-foreground" aria-label="Delete task">
+          ✕
         </Button>
-      )}
-      <Button size="sm" variant="ghost" onClick={handleDelete} disabled={deleting} className="text-muted-foreground">
-        ✕
-      </Button>
+      </div>
     </div>
   );
 }
@@ -263,7 +267,7 @@ function AddTaskForm({ onAdd }: { onAdd: (data: { type: string; title: string; d
       {open && (
         <Card className="border-dashed">
           <CardContent className="pt-4 space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5 col-span-2 sm:col-span-1">
                 <Label>Title</Label>
                 <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Task name" />
@@ -278,7 +282,7 @@ function AddTaskForm({ onAdd }: { onAdd: (data: { type: string; title: string; d
                   <select
                     value={type}
                     onChange={(e) => setType(e.target.value)}
-                    className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="w-full min-h-11 rounded-lg border bg-background px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:text-sm"
                   >
                     <option value="tm30">TM30</option>
                     <option value="90_day_notice">90-Day Notice</option>
@@ -389,7 +393,7 @@ export default function CompliancePage() {
         <Card>
           <CardContent className="pt-4">
             <button
-              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full"
+              className="flex min-h-11 w-full items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
               onClick={() => setShowHistory((v) => !v)}
             >
               <span>{showHistory ? '▾' : '▸'}</span>

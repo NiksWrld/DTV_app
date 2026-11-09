@@ -5,14 +5,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { apiClient } from '@/lib/api-client';
 import { ProviderCard, CATEGORY_LABELS } from '@/components/providers/provider-card';
+import { isSatValid } from '@/components/providers/sat-badge';
 import type { Provider } from '@/types/dtv';
+
+function initialParam(name: string): string {
+  if (typeof window === 'undefined') return '';
+  return new URLSearchParams(window.location.search).get(name) ?? '';
+}
 
 export default function ProvidersPage() {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [activeCategory, setActiveCategory] = useState('');
+  const [activeCategory, setActiveCategory] = useState(() => initialParam('category'));
   const [certifiedOnly, setCertifiedOnly] = useState(false);
+  const [satOnly, setSatOnly] = useState(() => initialParam('sat') === '1');
 
   useEffect(() => {
     apiClient.providers.list().then(setProviders).finally(() => setLoading(false));
@@ -26,6 +33,7 @@ export default function ProvidersPage() {
     return (
       (!activeCategory || p.category === activeCategory) &&
       (!certifiedOnly || p.dtv_certified) &&
+      (!satOnly || isSatValid(p.sat_certified, p.sat_valid_until)) &&
       (!search ||
         p.name.toLowerCase().includes(q) ||
         p.location?.toLowerCase().includes(q) ||
@@ -76,6 +84,15 @@ export default function ProvidersPage() {
             className={certifiedOnly ? 'bg-emerald-600 hover:bg-emerald-700 border-emerald-600' : 'border-emerald-600 text-emerald-700 hover:bg-emerald-50'}
           >
             ✓ DTV Certified
+          </Button>
+          <Button
+            size="sm"
+            variant={satOnly ? 'default' : 'outline'}
+            aria-pressed={satOnly}
+            onClick={() => setSatOnly((v) => !v)}
+            className={satOnly ? 'bg-indigo-700 hover:bg-indigo-800 border-indigo-700' : 'border-indigo-600 text-indigo-800 hover:bg-indigo-50'}
+          >
+            SAT certified only
           </Button>
         </div>
       </div>

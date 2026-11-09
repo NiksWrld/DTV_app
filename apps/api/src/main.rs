@@ -22,6 +22,97 @@ pub struct AppState {
     pub storage: integrations::s3::StorageClient,
 }
 
+/// Migration files run at startup, in order. Each file runs once and is then
+/// recorded in `schema_migrations`. 005 is not listed: checklist templates come
+/// from infra/seeds/checklist_items.sql.
+const MIGRATIONS: &[(&str, &str)] = &[
+    ("001_initial.sql", include_str!("../../../infra/migrations/001_initial.sql")),
+    ("002_checklist_items.sql", include_str!("../../../infra/migrations/002_checklist_items.sql")),
+    ("003_providers.sql", include_str!("../../../infra/migrations/003_providers.sql")),
+    ("004_guides.sql", include_str!("../../../infra/migrations/004_guides.sql")),
+    ("006_providers_plan.sql", include_str!("../../../infra/migrations/006_providers_plan.sql")),
+    ("007_listing_type.sql", include_str!("../../../infra/migrations/007_listing_type.sql")),
+    ("008_user_account.sql", include_str!("../../../infra/migrations/008_user_account.sql")),
+    ("009_compliance.sql", include_str!("../../../infra/migrations/009_compliance.sql")),
+    ("010_provider_certified.sql", include_str!("../../../infra/migrations/010_provider_certified.sql")),
+    ("011_passport_expiry.sql", include_str!("../../../infra/migrations/011_passport_expiry.sql")),
+    ("012_provider_portal.sql", include_str!("../../../infra/migrations/012_provider_portal.sql")),
+    ("013_embassy_override.sql", include_str!("../../../infra/migrations/013_embassy_override.sql")),
+    ("014_provider_views.sql", include_str!("../../../infra/migrations/014_provider_views.sql")),
+    ("015_provider_bookings.sql", include_str!("../../../infra/migrations/015_provider_bookings.sql")),
+    ("016_provider_reviews.sql", include_str!("../../../infra/migrations/016_provider_reviews.sql")),
+    ("017_app_settings.sql", include_str!("../../../infra/migrations/017_app_settings.sql")),
+    ("018_dedupe_providers.sql", include_str!("../../../infra/migrations/018_dedupe_providers.sql")),
+    ("019_sat_certification.sql", include_str!("../../../infra/migrations/019_sat_certification.sql")),
+];
+
+/// Files up to here were written before tracking existed and were re-run on
+/// every start, so on older databases their CREATE statements fail with
+/// "already exists". Those errors are expected; the file is still recorded.
+const LAST_UNTRACKED_MIGRATION: &str = "013_embassy_override.sql";
+
+/// Split a migration file into statements, dropping chunks that are only comments.
+fn statements(sql: &str) -> impl Iterator<Item = &str> {
+    sql.split(';').map(str::trim).filter(|chunk| {
+        chunk
+            .lines()
+            .any(|line| !line.trim().is_empty() && !line.trim_start().starts_with("--"))
+    })
+}
+
+async fn run_migrations(db: &sqlx::PgPool) {
+    if let Err(e) = sqlx::query(
+        "CREATE TABLE IF NOT EXISTS schema_migrations (
+            filename TEXT PRIMARY KEY,
+            applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )",
+    )
+    .execute(db)
+    .await
+    {
+        tracing::error!("Could not create schema_migrations: {}", e);
+        return;
+    }
+    let applied: std::collections::HashSet<String> =
+        sqlx::query_scalar::<_, String>("SELECT filename FROM schema_migrations")
+            .fetch_all(db)
+            .await
+            .unwrap_or_default()
+            .into_iter()
+            .collect();
+
+    for (name, sql) in MIGRATIONS {
+        if applied.contains(*name) {
+            continue;
+        }
+        let legacy = *name <= LAST_UNTRACKED_MIGRATION;
+        let mut failed = false;
+        for statement in statements(sql) {
+            if let Err(e) = sqlx::query(statement).execute(db).await {
+                if legacy {
+                    tracing::debug!("Migration {} note: {}", name, e);
+                } else {
+                    tracing::warn!("Migration {} failed: {}", name, e);
+                    failed = true;
+                }
+            }
+        }
+        if failed {
+            tracing::warn!("Migration {} not recorded; it will be retried on the next start", name);
+            continue;
+        }
+        if let Err(e) = sqlx::query("INSERT INTO schema_migrations (filename) VALUES ($1) ON CONFLICT DO NOTHING")
+            .bind(name)
+            .execute(db)
+            .await
+        {
+            tracing::warn!("Could not record migration {}: {}", name, e);
+        } else {
+            tracing::info!("Applied migration {}", name);
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt()
@@ -37,25 +128,7 @@ async fn main() {
         .await
         .expect("Failed to connect to database");
 
-    // Run migrations
-    let migration_files = [
-        include_str!("../../../infra/migrations/001_initial.sql"),
-        include_str!("../../../infra/migrations/002_checklist_items.sql"),
-        include_str!("../../../infra/migrations/003_providers.sql"),
-        include_str!("../../../infra/migrations/004_guides.sql"),
-        include_str!("../../../infra/migrations/006_providers_plan.sql"),
-        include_str!("../../../infra/migrations/007_listing_type.sql"),
-        include_str!("../../../infra/migrations/008_user_account.sql"),
-        include_str!("../../../infra/migrations/009_compliance.sql"),
-        include_str!("../../../infra/migrations/010_provider_certified.sql"),
-    ];
-    for sql in &migration_files {
-        for statement in sql.split(';').map(|s| s.trim()).filter(|s| !s.is_empty()) {
-            if let Err(e) = sqlx::query(statement).execute(&db).await {
-                tracing::warn!("Migration note: {}", e);
-            }
-        }
-    }
+    run_migrations(&db).await;
 
     // Seed data (idempotent)
     let embassy_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM embassies")
@@ -70,7 +143,7 @@ async fn main() {
             include_str!("../../../infra/seeds/guides.sql"),
         ];
         for sql in &seed_files {
-            for statement in sql.split(';').map(|s| s.trim()).filter(|s| !s.is_empty()) {
+            for statement in statements(sql) {
                 if let Err(e) = sqlx::query(statement).execute(&db).await {
                     tracing::warn!("Seed note: {}", e);
                 }
@@ -116,6 +189,7 @@ async fn main() {
 
     let public_routes = Router::new()
         .route("/api/auth/register", post(routes::auth::register))
+        .route("/api/auth/register-provider", post(routes::auth::register_provider))
         .route("/api/auth/login", post(routes::auth::login))
         .route("/api/health", get(|| async { "ok" }));
 
@@ -125,6 +199,7 @@ async fn main() {
         .route("/api/onboarding/profile", post(routes::onboarding::create_profile))
         .route("/api/onboarding/profile", put(routes::onboarding::update_profile))
         .route("/api/embassies", get(routes::onboarding::list_embassies))
+        .route("/api/embassies/match", post(routes::onboarding::match_embassy))
         .route("/api/checklist", get(routes::checklist::get_checklist))
         .route("/api/checklist/generate", post(routes::checklist::generate))
         .route("/api/checklist/:id/status", put(routes::checklist::update_status))
@@ -135,6 +210,28 @@ async fn main() {
         .route("/api/providers", get(routes::providers::list_providers))
         .route("/api/providers/categories", get(routes::providers::list_categories))
         .route("/api/providers/:id", get(routes::providers::get_provider))
+        .route("/api/providers/:id/packages", get(routes::provider_portal::list_packages))
+        .route("/api/providers/:id/requests", post(routes::bookings::create_request))
+        .route("/api/bookings", get(routes::bookings::list_my_bookings))
+        .route("/api/bookings/:id/cancel", post(routes::bookings::cancel_my_request))
+        .route("/api/bookings/:id/letter", get(routes::bookings::my_letter_url))
+        .route("/api/bookings/:id/review", post(routes::reviews::create_review))
+        .route("/api/providers/:id/reviews", get(routes::reviews::list_provider_reviews))
+        .route("/api/provider/reviews", get(routes::reviews::list_my_reviews))
+        .route("/api/provider/reviews/:id/reply", post(routes::reviews::reply_to_review))
+        .route("/api/provider/requests", get(routes::bookings::list_provider_requests))
+        .route("/api/provider/requests/:id/approve", post(routes::bookings::approve_request))
+        .route("/api/provider/requests/:id/decline", post(routes::bookings::decline_request))
+        .route("/api/provider/requests/:id/complete", post(routes::bookings::complete_request))
+        .route("/api/provider/requests/:id/letter", get(routes::bookings::provider_letter_url))
+        .route("/api/provider/me", get(routes::provider_portal::get_mine).put(routes::provider_portal::update_listing).post(routes::provider_portal::create_listing))
+        .route("/api/provider/claimable", get(routes::provider_portal::search_claimable))
+        .route("/api/provider/claim", post(routes::provider_portal::claim_listing))
+        .route("/api/provider/packages", post(routes::provider_portal::add_package))
+        .route("/api/provider/packages/:id", delete(routes::provider_portal::delete_package))
+        .route("/api/provider/photos", post(routes::provider_portal::upload_photo))
+        .route("/api/provider/sat", get(routes::sat::my_sat).post(routes::sat::submit_sat))
+        .route("/api/provider/sat/evidence", get(routes::sat::my_sat_evidence))
         .route("/api/plan", get(routes::providers::list_plan).post(routes::providers::add_plan_item))
         .route("/api/plan/:id", put(routes::providers::update_plan_item).delete(routes::providers::delete_plan_item))
         .route("/api/guides", get(routes::guides::list_guides))
@@ -158,10 +255,20 @@ async fn main() {
         .route("/api/admin/checklist", get(routes::admin::list_templates).post(routes::admin::create_template))
         .route("/api/admin/checklist/:id", put(routes::admin::update_template).delete(routes::admin::delete_template))
         .route("/api/admin/embassies", get(routes::admin::list_embassies))
+        .route("/api/admin/embassies/:id/sat", put(routes::sat::admin_update_embassy_rule))
+        .route("/api/admin/sat", get(routes::sat::admin_list))
+        .route("/api/admin/providers/:id/sat", post(routes::sat::admin_review))
+        .route("/api/admin/providers/:id/sat/evidence", get(routes::sat::admin_evidence))
         .route("/api/admin/embassy-overrides", post(routes::admin::create_override))
         .route("/api/admin/providers", get(routes::admin::list_providers_admin).post(routes::admin::create_provider))
         .route("/api/admin/providers/:id/verify", put(routes::admin::verify_provider))
+        .route("/api/admin/provider-stats", get(routes::provider_stats::list_view_stats))
+        .route("/api/admin/provider-claims", get(routes::provider_portal::list_pending_claims))
+        .route("/api/admin/provider-claims/:id", post(routes::provider_portal::review_claim))
         .route("/api/admin/providers/:id", put(routes::admin::update_provider).delete(routes::admin::delete_provider))
+        .route("/api/admin/settings", get(routes::settings::get_settings).put(routes::settings::update_settings))
+        .route("/api/admin/reviews", get(routes::reviews::admin_list_reviews))
+        .route("/api/admin/reviews/:id", put(routes::reviews::admin_set_hidden))
         .route("/api/admin/users", get(routes::admin::list_users_admin))
         .route("/api/admin/users/:id", put(routes::admin::update_user_role))
         .route_layer(axum_mw::from_fn_with_state(

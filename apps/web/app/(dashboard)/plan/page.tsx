@@ -7,17 +7,23 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { apiClient } from '@/lib/api-client';
 import { getRegionForCity, SCORE_CONFIG, type RegionWeather } from '@/lib/weather-data';
+import { SatBadge } from '@/components/providers/sat-badge';
+import { SatEmbassyNotice, needsSatWarning, useSatEmbassy } from '@/components/providers/sat-embassy-warning';
 import type { PlanItem } from '@/types/dtv';
 
+// Category colors stay clear of the weather palette (green / yellow / orange / red),
+// because the timeline bars themselves show the weather.
 const CATEGORY_COLORS: Record<string, string> = {
-  muay_thai_gym: '#ef4444',
-  cooking_school: '#f97316',
-  medical: '#3b82f6',
-  visa_advisory: '#8b5cf6',
-  coworking: '#10b981',
-  insurance: '#eab308',
-  relocation: '#ec4899',
+  muay_thai_gym: '#6366f1', // indigo
+  cooking_school: '#a855f7', // purple
+  medical: '#0ea5e9', // sky
+  visa_advisory: '#64748b', // slate
+  coworking: '#14b8a6', // teal
+  insurance: '#06b6d4', // cyan
+  relocation: '#334155', // dark slate
 };
+
+const NO_WEATHER_COLOR = '#94a3b8';
 
 const CATEGORY_LABELS: Record<string, string> = {
   muay_thai_gym: 'Muay Thai',
@@ -35,11 +41,22 @@ function getColor(category: string) {
   return CATEGORY_COLORS[category] ?? '#6b7280';
 }
 
+function CategoryDot({ category }: { category: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="inline-block size-2.5 shrink-0 rounded-full"
+      style={{ backgroundColor: getColor(category) }}
+    />
+  );
+}
+
 export default function PlanPage() {
   const router = useRouter();
   const [items, setItems] = useState<PlanItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalMonths, setTotalMonths] = useState(12);
+  const satEmbassy = useSatEmbassy();
 
   useEffect(() => {
     apiClient.plan.list().then(setItems).finally(() => setLoading(false));
@@ -125,9 +142,9 @@ export default function PlanPage() {
       </div>
 
       {/* Compliance badge */}
-      <div className={`rounded-lg border p-4 flex items-center gap-3 ${isCompliant ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-yellow-500/30 bg-yellow-500/5'}`}>
+      <div className={`flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center ${isCompliant ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-yellow-500/30 bg-yellow-500/5'}`}>
         <span className="text-2xl">{isCompliant ? '✓' : '⚠'}</span>
-        <div>
+        <div className="min-w-0 flex-1">
           <p className={`font-medium ${isCompliant ? 'text-emerald-700 dark:text-emerald-400' : 'text-yellow-700 dark:text-yellow-400'}`}>
             {coveredCount} of {totalMonths} months covered
             {isCompliant ? ' — DTV minimum met' : ' — Need at least 6 months'}
@@ -138,15 +155,14 @@ export default function PlanPage() {
             </p>
           )}
         </div>
-        <div className="ml-auto text-right">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => router.push('/providers')}
-          >
-            + Add Provider
-          </Button>
-        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          className="w-full sm:w-auto"
+          onClick={() => router.push('/providers')}
+        >
+          + Add Provider
+        </Button>
       </div>
 
       {items.length === 0 ? (
@@ -160,9 +176,17 @@ export default function PlanPage() {
           <div className="border rounded-xl overflow-hidden">
             <div className="bg-muted/50 px-4 py-2 border-b">
               <h2 className="font-medium text-sm">Timeline</h2>
+              <p className="text-xs text-muted-foreground">
+                Bar colors show the weather at each provider&rsquo;s location that month (see legend below). The dot shows the type.
+              </p>
             </div>
-            <div className="p-4 overflow-x-auto">
-              <div className="min-w-[500px]">
+            <div
+              className="overflow-x-auto overscroll-x-contain p-4"
+              tabIndex={0}
+              role="region"
+              aria-label="Plan timeline"
+            >
+              <div className="min-w-[640px]">
                 {/* Month headers */}
                 <div className="flex mb-2 pl-[200px]">
                   {months.map((m) => (
@@ -194,58 +218,75 @@ export default function PlanPage() {
                     {/* Label */}
                     <div className="w-[192px] shrink-0 pr-2">
                       <p className="text-sm font-medium truncate">{item.provider_name}</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <CategoryDot category={item.provider_category} />
                         {CATEGORY_LABELS[item.provider_category] ?? item.provider_category}
                         {item.provider_location && ` · ${item.provider_location}`}
                       </p>
+                      <SatBadge
+                        certified={item.provider_sat_certified}
+                        validUntil={item.provider_sat_valid_until}
+                        className="mt-0.5"
+                      />
                     </div>
 
-                    {/* Bar grid */}
+                    {/* Bar grid: each active month shows the weather at this provider's location */}
                     <div className="flex flex-1 relative">
-                      {months.map((m) => {
-                        const active = m >= item.start_month && m < item.start_month + item.duration_months;
-                        const isFirst = m === item.start_month;
-                        const isLast = m === item.start_month + item.duration_months - 1;
-                        return (
-                          <div
-                            key={m}
-                            className="flex-1 h-8 mx-0.5"
-                            style={{
-                              backgroundColor: active ? getColor(item.provider_category) : 'transparent',
-                              borderRadius: isFirst && isLast ? '6px' : isFirst ? '6px 0 0 6px' : isLast ? '0 6px 6px 0' : '0',
-                              opacity: active ? 0.85 : 1,
-                            }}
-                          />
-                        );
-                      })}
+                      {(() => {
+                        const region = getRegionForCity(item.provider_location);
+                        return months.map((m) => {
+                          const active = m >= item.start_month && m < item.start_month + item.duration_months;
+                          const isFirst = m === item.start_month;
+                          const isLast = m === item.start_month + item.duration_months - 1;
+                          const weather = region?.months[m - 1];
+                          const color = weather ? SCORE_CONFIG[weather.score].color : NO_WEATHER_COLOR;
+                          return (
+                            <div
+                              key={m}
+                              className="flex-1 h-8 mx-0.5"
+                              title={active ? `${MONTH_NAMES[m - 1]}: ${weather ? weather.label : 'No weather data'}` : undefined}
+                              style={{
+                                backgroundColor: active ? color : 'transparent',
+                                borderRadius: isFirst && isLast ? '6px' : isFirst ? '6px 0 0 6px' : isLast ? '0 6px 6px 0' : '0',
+                                opacity: active ? 0.85 : 1,
+                              }}
+                            />
+                          );
+                        });
+                      })()}
                     </div>
 
                     {/* Controls */}
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div className="flex shrink-0 items-center">
                       <button
+                        type="button"
                         onClick={() => updateStartMonth(item, -1)}
-                        className="text-muted-foreground hover:text-foreground text-xs px-1"
-                        title="Shift left"
+                        className="inline-flex size-11 items-center justify-center text-muted-foreground hover:text-foreground"
+                        aria-label="Shift earlier"
                       >←</button>
                       <button
+                        type="button"
                         onClick={() => updateStartMonth(item, 1)}
-                        className="text-muted-foreground hover:text-foreground text-xs px-1"
-                        title="Shift right"
+                        className="inline-flex size-11 items-center justify-center text-muted-foreground hover:text-foreground"
+                        aria-label="Shift later"
                       >→</button>
                       <button
+                        type="button"
                         onClick={() => updateDuration(item, -1)}
-                        className="text-muted-foreground hover:text-foreground text-xs px-1 ml-1"
-                        title="Shorter"
+                        className="inline-flex size-11 items-center justify-center text-muted-foreground hover:text-foreground"
+                        aria-label="Shorten"
                       >−</button>
                       <button
+                        type="button"
                         onClick={() => updateDuration(item, 1)}
-                        className="text-muted-foreground hover:text-foreground text-xs px-1"
-                        title="Longer"
+                        className="inline-flex size-11 items-center justify-center text-muted-foreground hover:text-foreground"
+                        aria-label="Lengthen"
                       >+</button>
                       <button
+                        type="button"
                         onClick={() => remove(item.id)}
-                        className="text-destructive hover:text-destructive/80 text-xs px-1 ml-1"
-                        title="Remove"
+                        className="inline-flex size-11 items-center justify-center text-destructive hover:text-destructive/80"
+                        aria-label="Remove from plan"
                       >✕</button>
                     </div>
                   </div>
@@ -265,7 +306,7 @@ export default function PlanPage() {
                       />
                     ))}
                   </div>
-                  <div className="w-24 shrink-0" />
+                  <div className="w-[220px] shrink-0" />
                 </div>
 
                 {/* Weather rows — one per unique region in the plan */}
@@ -302,7 +343,7 @@ export default function PlanPage() {
                               );
                             })}
                           </div>
-                          <div className="w-24 shrink-0" />
+                          <div className="w-[220px] shrink-0" />
                         </div>
                       ))}
                       <div className="flex items-center gap-3 pt-1">
@@ -331,7 +372,7 @@ export default function PlanPage() {
               return (
                 <div
                   key={item.id}
-                  className="flex items-center gap-3 border rounded-lg p-3"
+                  className="flex flex-wrap items-center gap-3 rounded-lg border p-3"
                 >
                   <div
                     className="w-1 self-stretch rounded-full shrink-0"
@@ -339,11 +380,32 @@ export default function PlanPage() {
                   />
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm">{item.provider_name}</p>
+                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <CategoryDot category={item.provider_category} />
+                      {CATEGORY_LABELS[item.provider_category] ?? item.provider_category}
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       Month {item.start_month}–{item.start_month + item.duration_months - 1}
                       {' · '}{item.duration_months} month{item.duration_months !== 1 ? 's' : ''}
                       {item.provider_location && ` · ${item.provider_location}`}
                     </p>
+                    <SatBadge
+                      certified={item.provider_sat_certified}
+                      validUntil={item.provider_sat_valid_until}
+                      showExpiry
+                      className="mt-1"
+                    />
+                    {needsSatWarning(
+                      satEmbassy,
+                      item.provider_category,
+                      item.provider_sat_certified,
+                      item.provider_sat_valid_until,
+                    ) &&
+                      satEmbassy && (
+                        <div className="mt-1.5">
+                          <SatEmbassyNotice embassy={satEmbassy} />
+                        </div>
+                      )}
                   </div>
                   {tier && (
                     <Badge variant="outline" className="text-xs shrink-0">
@@ -351,8 +413,9 @@ export default function PlanPage() {
                     </Badge>
                   )}
                   <button
+                    type="button"
                     onClick={() => remove(item.id)}
-                    className="text-muted-foreground hover:text-destructive text-xs shrink-0"
+                    className="inline-flex min-h-11 items-center text-sm text-muted-foreground hover:text-destructive"
                   >
                     Remove
                   </button>
@@ -363,12 +426,12 @@ export default function PlanPage() {
 
           {/* Footer summary */}
           {totalCost > 0 && (
-            <div className="border rounded-lg p-4 flex items-center justify-between">
+            <div className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Estimated total program cost</p>
                 <p className="text-2xl font-bold">THB {totalCost.toLocaleString()}</p>
               </div>
-              <Button variant="outline" disabled>
+              <Button variant="outline" disabled className="w-full sm:w-auto">
                 Generate proof document
               </Button>
             </div>

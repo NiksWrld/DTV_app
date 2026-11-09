@@ -15,8 +15,20 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { apiClient } from '@/lib/api-client';
+import { SafeImage } from '@/components/safe-image';
+import { RequestLetterCard } from '@/components/providers/request-letter';
+import { ReviewsSection } from '@/components/providers/reviews-section';
+import { RatingSummary } from '@/components/providers/stars';
+import { ProviderCard } from '@/components/providers/provider-card';
+import { SatBadge, isSatValid } from '@/components/providers/sat-badge';
+import {
+  SatEmbassyNotice,
+  SatEmbassyWarning,
+  needsSatWarning,
+  useSatEmbassy,
+} from '@/components/providers/sat-embassy-warning';
 import { getRegionForCity, getBestMonths, SCORE_CONFIG } from '@/lib/weather-data';
-import type { Provider } from '@/types/dtv';
+import type { Provider, ProviderPackage } from '@/types/dtv';
 
 const CATEGORY_LABELS: Record<string, string> = {
   muay_thai_gym: 'Muay Thai',
@@ -45,7 +57,9 @@ export default function ProviderDetailPage() {
   const router = useRouter();
 
   const [provider, setProvider] = useState<Provider | null>(null);
+  const [packages, setPackages] = useState<ProviderPackage[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Editable fields
   const [imageUrlInput, setImageUrlInput] = useState('');
@@ -56,8 +70,14 @@ export default function ProviderDetailPage() {
   const [startMonth, setStartMonth] = useState('1');
   const [durationMonths, setDurationMonths] = useState('1');
   const [adding, setAdding] = useState(false);
+  const satEmbassy = useSatEmbassy();
 
   useEffect(() => {
+    apiClient.account.get().then((a) => setIsAdmin(a.role === 'admin')).catch(() => setIsAdmin(false));
+  }, []);
+
+  useEffect(() => {
+    apiClient.providerPortal.packages(id).then(setPackages).catch(() => setPackages([]));
     apiClient.providers.get(id).then((p) => {
       setProvider(p);
       setImageUrlInput(p.image_url ?? '');
@@ -123,44 +143,57 @@ export default function ProviderDetailPage() {
   const colorClass = CATEGORY_COLORS[provider.category] ?? 'bg-gray-400';
   const region = getRegionForCity(provider.location ?? provider.cities_served?.[0]);
   const bestMonths = region ? getBestMonths(region) : [];
+  const satValid = isSatValid(provider.sat_certified, provider.sat_valid_until);
+  const showSatWarning = needsSatWarning(satEmbassy, provider.category, provider.sat_certified, provider.sat_valid_until);
 
   return (
     <div className="max-w-2xl space-y-6">
       <button
+        type="button"
         onClick={() => router.back()}
-        className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+        className="inline-flex min-h-11 items-center text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
         ← Back
       </button>
 
       {/* Hero image */}
-      <div className="rounded-xl overflow-hidden border">
-        {displayImage ? (
-          <img src={displayImage} alt={provider.name} className="w-full h-56 object-cover" />
-        ) : (
-          <div className={`w-full h-56 ${colorClass} flex items-center justify-center`}>
-            <span className="text-white/60 text-3xl font-bold">
-              {CATEGORY_LABELS[provider.category] ?? provider.category}
-            </span>
-          </div>
-        )}
+      <div className="overflow-hidden rounded-xl border">
+        <SafeImage
+          src={displayImage}
+          alt={provider.name}
+          className="h-56 w-full object-cover"
+          fallback={
+            <div className={`flex h-56 w-full items-center justify-center ${colorClass}`}>
+              <span className="px-4 text-center text-xl font-bold text-white/60 sm:text-3xl">
+                {CATEGORY_LABELS[provider.category] ?? provider.category}
+              </span>
+            </div>
+          }
+        />
       </div>
 
       {/* Header */}
       <div className="space-y-1">
         <div className="flex items-center gap-2 flex-wrap">
           <h1 className="text-2xl font-bold">{provider.name}</h1>
-          {provider.verification_status === 'verified_docs_seen' && (
+          {provider.verification_status === 'verified_docs_seen' && !provider.limited && (
             <Badge variant="secondary">Verified DTV Provider</Badge>
           )}
-          {provider.supports_dtv && (
+          {provider.supports_dtv && !provider.limited && (
             <Badge variant="outline">DTV Documents Issued</Badge>
           )}
+          <SatBadge certified={provider.sat_certified} validUntil={provider.sat_valid_until} showExpiry />
         </div>
         <p className="text-muted-foreground">
           {CATEGORY_LABELS[provider.category] ?? provider.category}
           {provider.location && ` · ${provider.location}`}
         </p>
+        <RatingSummary average={provider.rating_avg} count={provider.rating_count} />
+        {satValid && provider.sat_certificate_number && (
+          <p className="text-xs text-indigo-800">
+            Sports Authority of Thailand certificate no. {provider.sat_certificate_number}
+          </p>
+        )}
         {provider.cities_served && provider.cities_served.length > 0 && (
           <div className="flex gap-1 flex-wrap">
             {provider.cities_served.map((c) => (
@@ -169,6 +202,30 @@ export default function ProviderDetailPage() {
           </div>
         )}
       </div>
+
+      {showSatWarning && satEmbassy && <SatEmbassyWarning embassy={satEmbassy} provider={provider} />}
+
+      {provider.limited && (
+        <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/40">
+          <div>
+            <h2 className="font-semibold">Not a DTV partner yet</h2>
+            <p className="text-sm text-muted-foreground">
+              {provider.name} hasn&rsquo;t joined the app yet, so we can&rsquo;t show prices or contact details, and it
+              can&rsquo;t issue your DTV letter here.
+            </p>
+          </div>
+          {provider.alternatives && provider.alternatives.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Verified DTV partners you can book instead</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {provider.alternatives.map((alt) => (
+                  <ProviderCard key={alt.id} provider={alt} />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Description */}
       {provider.description && (
@@ -198,6 +255,30 @@ export default function ProviderDetailPage() {
           )}
         </div>
       )}
+
+      {packages.length > 0 && (
+        <div className="space-y-2 rounded-lg border p-4">
+          <h2 className="font-semibold">Packages</h2>
+          {packages.map((item) => (
+            <div key={item.id} className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
+              <span className="font-medium">{item.name}</span>
+              <span className="text-muted-foreground">
+                {item.price_amount != null ? `${item.currency} ${item.price_amount.toLocaleString()}` : 'Ask'}
+                {item.duration_days ? ` · ${item.duration_days} days` : ''}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {provider.listing_type === 'dtv_program' && !provider.limited && (
+        <div className="space-y-2">
+          {showSatWarning && satEmbassy && <SatEmbassyNotice embassy={satEmbassy} />}
+          <RequestLetterCard provider={provider} packages={packages} />
+        </div>
+      )}
+
+      <ReviewsSection providerId={provider.id} />
 
       {/* Weather */}
       {region && (
@@ -237,12 +318,13 @@ export default function ProviderDetailPage() {
       )}
 
       {/* Admin: image + website */}
+      {isAdmin && (
       <div className="border rounded-lg p-4 space-y-4">
         <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Admin</h2>
 
         <div className="space-y-1.5">
           <Label htmlFor="external-url">Website URL</Label>
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <Input
               id="external-url"
               value={externalUrlInput}
@@ -255,7 +337,7 @@ export default function ProviderDetailPage() {
                 href={externalUrlInput}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="shrink-0 inline-flex items-center justify-center h-8 px-3 rounded-lg border text-xs hover:bg-accent transition-colors"
+                className="inline-flex h-11 shrink-0 items-center justify-center rounded-lg border px-3 text-sm transition-colors hover:bg-accent"
               >
                 Open ↗
               </a>
@@ -275,11 +357,11 @@ export default function ProviderDetailPage() {
             placeholder="https://example.com/image.jpg"
           />
           {imageUrlInput && (
-            <img
+            <SafeImage
               src={imageUrlInput}
               alt="Preview"
-              className="mt-2 h-24 w-full object-cover rounded-lg border"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              className="mt-2 h-24 w-full rounded-lg border object-cover"
+              fallback={<div className="mt-2 flex h-24 w-full items-center justify-center rounded-lg border bg-muted text-xs text-muted-foreground">Image unavailable</div>}
             />
           )}
         </div>
@@ -288,11 +370,13 @@ export default function ProviderDetailPage() {
           {saving ? 'Saving...' : 'Save changes'}
         </Button>
       </div>
+      )}
 
       {/* Add to plan */}
       {provider.listing_type === 'dtv_program' && (
         <div className="border rounded-lg p-4 space-y-4">
           <h2 className="font-semibold">Add to My Plan</h2>
+          {showSatWarning && satEmbassy && <SatEmbassyNotice embassy={satEmbassy} />}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Start month</Label>

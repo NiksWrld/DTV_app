@@ -24,7 +24,7 @@ pub async fn get_account(
             (StatusCode::NOT_FOUND, Json(serde_json::json!({"error": "User not found"})))
         })?;
 
-    Ok(Json(user.into()))
+    Ok(Json(with_fresh_avatar(&state, user).await))
 }
 
 pub async fn update_account(
@@ -52,7 +52,7 @@ pub async fn update_account(
          Json(serde_json::json!({"error": format!("Database error: {}", e)})))
     })?;
 
-    Ok(Json(user.into()))
+    Ok(Json(with_fresh_avatar(&state, user).await))
 }
 
 pub async fn upload_avatar(
@@ -105,13 +105,10 @@ pub async fn upload_avatar(
          Json(serde_json::json!({"error": format!("Upload failed: {}", e)})))
     })?;
 
-    let avatar_url = state.storage.presigned_url(&key, 60 * 60 * 24 * 7).await
-        .unwrap_or_else(|_| key.clone());
-
     let user = sqlx::query_as::<_, User>(
         "UPDATE users SET avatar_url = $1, updated_at = NOW() WHERE id = $2 RETURNING *",
     )
-    .bind(&avatar_url)
+    .bind(&key)
     .bind(user_id)
     .fetch_one(&state.db)
     .await
@@ -120,5 +117,11 @@ pub async fn upload_avatar(
          Json(serde_json::json!({"error": format!("Database error: {}", e)})))
     })?;
 
-    Ok(Json(user.into()))
+    Ok(Json(with_fresh_avatar(&state, user).await))
+}
+
+pub(crate) async fn with_fresh_avatar(state: &AppState, user: User) -> UserResponse {
+    let mut response = UserResponse::from(user);
+    response.avatar_url = state.storage.present_opt(response.avatar_url).await;
+    response
 }

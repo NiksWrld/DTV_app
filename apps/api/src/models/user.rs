@@ -46,6 +46,7 @@ impl From<User> for UserResponse {
 pub struct RegisterRequest {
     pub email: String,
     pub password: String,
+    pub display_name: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]

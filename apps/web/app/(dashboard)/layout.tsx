@@ -3,9 +3,17 @@
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { ClipboardList, Compass, FileText, LayoutDashboard, MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { apiClient } from '@/lib/api-client';
+import { SafeImage } from '@/components/safe-image';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard' },
@@ -20,7 +28,29 @@ const navItems = [
   { href: '/review', label: 'Review' },
 ];
 
+const primaryNav = [
+  { href: '/dashboard', label: 'Home', icon: LayoutDashboard },
+  { href: '/checklist', label: 'Apply', icon: ClipboardList },
+  { href: '/documents', label: 'Docs', icon: FileText },
+  { href: '/providers', label: 'Programs', icon: Compass },
+];
+
+const moreItems = [
+  { href: '/onboarding', label: 'Onboarding' },
+  { href: '/compliance', label: 'In Thailand' },
+  { href: '/partners', label: 'Partners' },
+  { href: '/plan', label: 'My Plan' },
+  { href: '/guides', label: 'Guides' },
+  { href: '/review', label: 'Review' },
+  { href: '/account', label: 'Profile' },
+];
+
 type AccountSummary = { display_name?: string; email: string; avatar_url?: string; role?: string };
+
+function isActive(href: string, pathname: string) {
+  if (href === '/dashboard') return pathname === '/dashboard';
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 export default function DashboardLayout({
   children,
@@ -29,54 +59,55 @@ export default function DashboardLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [checked, setChecked] = useState(false);
   const [acct, setAcct] = useState<AccountSummary | null>(null);
 
   useEffect(() => {
     if (!localStorage.getItem('token')) {
       router.replace('/login');
-    } else {
-      setChecked(true);
-      apiClient.account.get().then((a) =>
-        setAcct({ display_name: a.display_name, email: a.email, avatar_url: a.avatar_url, role: a.role })
-      ).catch(() => {});
+      return;
     }
+    let leave = false;
+    apiClient.account.get().then((a) => {
+      if (a.role === 'provider') {
+        leave = true;
+        router.replace('/provider');
+        return;
+      }
+      setAcct({ display_name: a.display_name, email: a.email, avatar_url: a.avatar_url, role: a.role });
+    }).catch(() => {}).finally(() => {
+      if (!leave) setChecked(true);
+    });
   }, [router]);
 
   if (!checked) return null;
 
-  return (
-    <div className="min-h-dvh flex">
-      {/* Mobile overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+  const moreActive = moreItems.some((item) => isActive(item.href, pathname)) || pathname.startsWith('/admin');
 
-      {/* Sidebar */}
-      <aside
-        className={`fixed md:sticky top-0 left-0 z-50 h-dvh w-64 border-r bg-card flex flex-col transition-transform md:translate-x-0 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
+  function logout() {
+    localStorage.removeItem('token');
+    router.push('/login');
+  }
+
+  return (
+    <div className="min-h-dvh md:flex">
+      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r bg-card md:flex">
         <div className="p-4">
           <Link href="/dashboard" className="text-lg font-bold text-primary">
             DTV Workspace
           </Link>
         </div>
         <Separator />
-        <nav className="flex-1 p-2 space-y-1">
+        <nav className="flex-1 space-y-1 p-2" aria-label="Primary">
           {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              onClick={() => setSidebarOpen(false)}
-              className={`block px-3 py-2 rounded-md text-sm transition-colors ${
-                pathname === item.href
-                  ? 'bg-primary/10 text-primary font-medium'
+              aria-current={isActive(item.href, pathname) ? 'page' : undefined}
+              className={`block rounded-md px-3 py-2 text-sm transition-colors ${
+                isActive(item.href, pathname)
+                  ? 'bg-primary/10 font-medium text-primary'
                   : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
               }`}
             >
@@ -85,33 +116,25 @@ export default function DashboardLayout({
           ))}
         </nav>
         <Separator />
-        <div className="p-3 space-y-1">
+        <div className="space-y-1 p-3">
           <Link
             href="/account"
-            onClick={() => setSidebarOpen(false)}
-            className="flex items-center gap-3 px-2 py-2 rounded-md hover:bg-accent transition-colors"
+            className="flex items-center gap-3 rounded-md px-2 py-2 transition-colors hover:bg-accent"
           >
-            {acct?.avatar_url ? (
-              <img src={acct.avatar_url} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
-            ) : (
-              <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary shrink-0">
-                {(acct?.display_name ?? acct?.email ?? '?').slice(0, 2).toUpperCase()}
-              </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">
+            <AccountMark acct={acct} />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">
                 {acct?.display_name ?? acct?.email ?? 'Account'}
               </p>
               {acct?.display_name && (
-                <p className="text-xs text-muted-foreground truncate">{acct.email}</p>
+                <p className="truncate text-xs text-muted-foreground">{acct.email}</p>
               )}
             </div>
           </Link>
           {acct?.role === 'admin' && (
             <Link
               href="/admin"
-              onClick={() => setSidebarOpen(false)}
-              className="block px-2 py-1.5 rounded-md text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+              className="block rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
             >
               ⚙ Admin
             </Link>
@@ -120,48 +143,131 @@ export default function DashboardLayout({
             variant="ghost"
             size="sm"
             className="w-full justify-start text-muted-foreground"
-            onClick={() => {
-              localStorage.removeItem('token');
-              router.push('/login');
-            }}
+            onClick={logout}
           >
             Log out
           </Button>
         </div>
       </aside>
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col min-h-dvh">
-        {/* Mobile header */}
-        <header className="md:hidden border-b h-14 flex items-center px-4 gap-3">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="p-2 -ml-2 rounded-md hover:bg-accent"
-            aria-label="Open menu"
+      <div className="flex min-h-dvh min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-30 flex min-h-14 items-center justify-between gap-3 border-b bg-background/95 px-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[env(safe-area-inset-top)] backdrop-blur md:hidden">
+          <Link href="/dashboard" className="text-lg font-bold text-primary">
+            DTV
+          </Link>
+          <Link
+            href="/account"
+            aria-label="Account"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <line x1="3" y1="12" x2="21" y2="12" />
-              <line x1="3" y1="18" x2="21" y2="18" />
-            </svg>
-          </button>
-          <span className="font-bold text-primary">DTV Workspace</span>
+            <AccountMark acct={acct} />
+          </Link>
         </header>
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-5xl w-full mx-auto">
+        <main
+          id="main"
+          className="mx-auto w-full min-w-0 max-w-5xl flex-1 px-[max(1rem,env(safe-area-inset-left))] pt-4 pr-[max(1rem,env(safe-area-inset-right))] pb-[calc(5.25rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-6 md:px-8 md:pt-8 md:pb-8"
+        >
           {children}
         </main>
+
+        <nav
+          className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+          aria-label="Primary"
+        >
+          <div className="grid grid-cols-5">
+            {primaryNav.map((item) => {
+              const Icon = item.icon;
+              const active = isActive(item.href, pathname);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-current={active ? 'page' : undefined}
+                  className={`flex min-h-14 flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-medium ${
+                    active ? 'text-primary' : 'text-muted-foreground'
+                  }`}
+                >
+                  <Icon aria-hidden="true" className="size-5" />
+                  {item.label}
+                </Link>
+              );
+            })}
+            <button
+              type="button"
+              className={`flex min-h-14 flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-medium ${
+                moreActive ? 'text-primary' : 'text-muted-foreground'
+              }`}
+              aria-expanded={moreOpen}
+              aria-haspopup="dialog"
+              onClick={() => setMoreOpen(true)}
+            >
+              <MoreHorizontal aria-hidden="true" className="size-5" />
+              More
+            </button>
+          </div>
+        </nav>
+
+        <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+          <SheetContent
+            side="bottom"
+            className="max-h-[85dvh] overflow-y-auto rounded-t-xl pb-[max(1.5rem,env(safe-area-inset-bottom))]"
+          >
+            <SheetHeader>
+              <SheetTitle>More</SheetTitle>
+            </SheetHeader>
+            <nav className="flex flex-col px-2 pb-2" aria-label="More">
+              {moreItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMoreOpen(false)}
+                  aria-current={isActive(item.href, pathname) ? 'page' : undefined}
+                  className={`flex min-h-11 items-center rounded-md px-3 text-sm ${
+                    isActive(item.href, pathname)
+                      ? 'bg-primary/10 font-medium text-primary'
+                      : 'text-foreground hover:bg-accent'
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              ))}
+              {acct?.role === 'admin' && (
+                <Link
+                  href="/admin"
+                  onClick={() => setMoreOpen(false)}
+                  className="flex min-h-11 items-center rounded-md px-3 text-sm text-foreground hover:bg-accent"
+                >
+                  Admin
+                </Link>
+              )}
+              <Button
+                variant="ghost"
+                className="mt-1 w-full justify-start text-muted-foreground"
+                onClick={logout}
+              >
+                Log out
+              </Button>
+            </nav>
+          </SheetContent>
+        </Sheet>
       </div>
     </div>
+  );
+}
+
+function AccountMark({ acct }: { acct: AccountSummary | null }) {
+  const initials = (acct?.display_name ?? acct?.email ?? '?').slice(0, 2).toUpperCase();
+  return (
+    <SafeImage
+      src={acct?.avatar_url}
+      alt=""
+      className="size-7 shrink-0 rounded-full object-cover"
+      fallback={
+        <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary">
+          {initials}
+        </div>
+      }
+    />
   );
 }

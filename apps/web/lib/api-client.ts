@@ -44,7 +44,78 @@ export const apiClient = {
         { email, password },
       ),
     me: () =>
-      request<{ id: string; email: string }>('GET', '/api/auth/me'),
+      request<{ id: string; email: string; role?: string }>('GET', '/api/auth/me'),
+  },
+  providerPortal: {
+    me: () =>
+      request<{
+        listing: import('@/types/dtv').OwnedListing | null;
+        packages: import('@/types/dtv').ProviderPackage[];
+        stats: import('@/types/dtv').ViewStats | null;
+      }>('GET', '/api/provider/me'),
+    create: (data: Record<string, unknown>) =>
+      request<import('@/types/dtv').OwnedListing>('POST', '/api/provider/me', data),
+    save: (data: Record<string, unknown>) =>
+      request<import('@/types/dtv').OwnedListing>('PUT', '/api/provider/me', data),
+    claimable: (q: string) =>
+      request<Array<{ id: string; name: string; category: string; location?: string; claim_status: string }>>(
+        'GET',
+        `/api/provider/claimable?q=${encodeURIComponent(q)}`,
+      ),
+    claim: (provider_id: string) =>
+      request<import('@/types/dtv').OwnedListing>('POST', '/api/provider/claim', { provider_id }),
+    addPackage: (data: Record<string, unknown>) =>
+      request<import('@/types/dtv').ProviderPackage>('POST', '/api/provider/packages', data),
+    removePackage: (id: string) => request<void>('DELETE', `/api/provider/packages/${id}`),
+    packages: (providerId: string) =>
+      request<import('@/types/dtv').ProviderPackage[]>('GET', `/api/providers/${providerId}/packages`),
+    requests: () =>
+      request<import('@/types/dtv').Booking[]>('GET', '/api/provider/requests'),
+    approveRequest: (id: string, data: Record<string, unknown>) =>
+      request<import('@/types/dtv').Booking>('POST', `/api/provider/requests/${id}/approve`, data),
+    declineRequest: (id: string, reason?: string) =>
+      request<import('@/types/dtv').Booking>('POST', `/api/provider/requests/${id}/decline`, { reason }),
+    completeRequest: (id: string) =>
+      request<import('@/types/dtv').Booking>('POST', `/api/provider/requests/${id}/complete`, {}),
+    letter: (id: string) =>
+      request<{ url: string; filename: string }>('GET', `/api/provider/requests/${id}/letter`),
+  },
+  providerSat: {
+    mine: () => request<import('@/types/dtv').SatInfo>('GET', '/api/provider/sat'),
+    submit: async (file: File, certificateNumber?: string, validUntil?: string) => {
+      const token = localStorage.getItem('token');
+      const form = new FormData();
+      form.append('file', file);
+      if (certificateNumber) form.append('certificate_number', certificateNumber);
+      if (validUntil) form.append('valid_until', validUntil);
+      const res = await fetch('/api/provider/sat', {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: form,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Upload failed');
+      return data as import('@/types/dtv').SatInfo;
+    },
+    evidence: () => request<{ url: string; filename?: string }>('GET', '/api/provider/sat/evidence'),
+  },
+  bookings: {
+    mine: () => request<import('@/types/dtv').Booking[]>('GET', '/api/bookings'),
+    create: (providerId: string, data: { message?: string; package_id?: string; preferred_start?: string }) =>
+      request<import('@/types/dtv').Booking>('POST', `/api/providers/${providerId}/requests`, data),
+    cancel: (id: string) =>
+      request<import('@/types/dtv').Booking>('POST', `/api/bookings/${id}/cancel`, {}),
+    letter: (id: string) =>
+      request<{ url: string; filename: string }>('GET', `/api/bookings/${id}/letter`),
+    review: (id: string, data: { rating: number; body?: string }) =>
+      request<import('@/types/dtv').Review>('POST', `/api/bookings/${id}/review`, data),
+  },
+  reviews: {
+    forProvider: (providerId: string) =>
+      request<import('@/types/dtv').ReviewSummary>('GET', `/api/providers/${providerId}/reviews`),
+    mine: () => request<import('@/types/dtv').Review[]>('GET', '/api/provider/reviews'),
+    reply: (id: string, reply: string) =>
+      request<import('@/types/dtv').Review>('POST', `/api/provider/reviews/${id}/reply`, { reply }),
   },
   onboarding: {
     getProfile: () =>
@@ -52,8 +123,13 @@ export const apiClient = {
         id: string;
         nationality: string;
         current_country: string;
+        current_city?: string;
         intended_path: string;
         has_dependents: boolean;
+        passport_expiry?: string | null;
+        passport_number?: string | null;
+        preferred_embassy_id?: string | null;
+        embassy_overridden?: boolean;
       }>('GET', '/api/onboarding/profile'),
     createProfile: (data: Record<string, unknown>) =>
       request<{ id: string }>('POST', '/api/onboarding/profile', data),
@@ -61,10 +137,12 @@ export const apiClient = {
       request<{ id: string }>('PUT', '/api/onboarding/profile', data),
   },
   embassies: {
-    list: () =>
-      request<Array<{ id: string; country: string; city: string; name: string }>>(
-        'GET',
-        '/api/embassies',
+    list: () => request<import('@/types/dtv').Embassy[]>('GET', '/api/embassies'),
+    match: (country: string, city?: string) =>
+      request<{ id: string; country: string; city: string; name: string; website_url?: string; notes?: string } | null>(
+        'POST',
+        '/api/embassies/match',
+        { country, city },
       ),
   },
   checklist: {
@@ -90,7 +168,10 @@ export const apiClient = {
         body: formData,
       });
 
-      if (!res.ok) throw new Error('Upload failed');
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Upload failed');
+      }
       return res.json();
     },
     download: (id: string) =>
@@ -127,6 +208,29 @@ export const apiClient = {
         request<void>('DELETE', `/api/admin/providers/${id}`),
       verify: (id: string, status: string) =>
         request('PUT', `/api/admin/providers/${id}/verify`, { verification_status: status }),
+      stats: () =>
+        request<import('@/types/dtv').ProviderViewRow[]>('GET', '/api/admin/provider-stats'),
+    },
+    sat: {
+      list: () => request<import('@/types/dtv').SatInfo[]>('GET', '/api/admin/sat'),
+      review: (
+        providerId: string,
+        data: { action: 'approve' | 'reject' | 'revoke'; certificate_number?: string; valid_until?: string; note?: string },
+      ) => request<import('@/types/dtv').SatInfo>('POST', `/api/admin/providers/${providerId}/sat`, data),
+      evidence: (providerId: string) =>
+        request<{ url: string; filename?: string }>('GET', `/api/admin/providers/${providerId}/sat/evidence`),
+      embassyRule: (embassyId: string, data: { requires_sat_for_muay_thai: boolean; sat_note?: string }) =>
+        request<import('@/types/dtv').Embassy>('PUT', `/api/admin/embassies/${embassyId}/sat`, data),
+    },
+    settings: {
+      get: () => request<import('@/types/dtv').AppSettings>('GET', '/api/admin/settings'),
+      update: (data: import('@/types/dtv').AppSettings) =>
+        request<import('@/types/dtv').AppSettings>('PUT', '/api/admin/settings', data),
+    },
+    reviews: {
+      list: () => request<import('@/types/dtv').Review[]>('GET', '/api/admin/reviews'),
+      setHidden: (id: string, hidden: boolean) =>
+        request<import('@/types/dtv').Review>('PUT', `/api/admin/reviews/${id}`, { hidden }),
     },
     users: {
       list: () =>
@@ -135,6 +239,15 @@ export const apiClient = {
         ),
       updateRole: (id: string, role: string) =>
         request('PUT', `/api/admin/users/${id}`, { role }),
+    },
+    claims: {
+      list: () =>
+        request<Array<{ id: string; name: string; category: string; location?: string; claim_status: string; owner_email?: string }>>(
+          'GET',
+          '/api/admin/provider-claims',
+        ),
+      review: (id: string, action: 'approve' | 'reject') =>
+        request('POST', `/api/admin/provider-claims/${id}`, { action }),
     },
   },
   compliance: {

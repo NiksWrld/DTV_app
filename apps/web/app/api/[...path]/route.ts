@@ -6,8 +6,9 @@ const TIMEOUT_MS = 10_000;
 const err503 = () =>
   NextResponse.json({ error: 'API unavailable. Is the server running?' }, { status: 503 });
 
-function apiUrl(path: string[]) {
-  return `${API_BASE}/api/${path.join('/')}`;
+function apiUrl(path: string[], req?: NextRequest) {
+  // Keep the query string, e.g. /api/providers?category=...&sat=1
+  return `${API_BASE}/api/${path.join('/')}${req?.nextUrl.search ?? ''}`;
 }
 
 function authHeader(req: NextRequest): Record<string, string> {
@@ -30,7 +31,7 @@ async function proxyFetch(input: RequestInfo, init: RequestInit): Promise<NextRe
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   const { path } = await params;
-  return proxyFetch(apiUrl(path), {
+  return proxyFetch(apiUrl(path, req), {
     headers: { 'Content-Type': 'application/json', ...authHeader(req) },
   });
 }
@@ -38,7 +39,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ path
 export async function POST(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   const { path } = await params;
   const body = await req.json().catch(() => undefined);
-  return proxyFetch(apiUrl(path), {
+  return proxyFetch(apiUrl(path, req), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeader(req) },
     body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -48,7 +49,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pat
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   const { path } = await params;
   const body = await req.json().catch(() => undefined);
-  return proxyFetch(apiUrl(path), {
+  return proxyFetch(apiUrl(path, req), {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...authHeader(req) },
     body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -57,7 +58,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ path
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   const { path } = await params;
-  return proxyFetch(apiUrl(path), {
+  return proxyFetch(apiUrl(path, req), {
     method: 'DELETE',
     headers: authHeader(req),
   });

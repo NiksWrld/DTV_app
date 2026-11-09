@@ -187,6 +187,7 @@ async fn main() {
         .route("/api/admin/provider-claims", get(routes::provider_portal::list_pending_claims))
         .route("/api/admin/provider-claims/:id", post(routes::provider_portal::review_claim))
         .route("/api/admin/providers/:id", put(routes::admin::update_provider).delete(routes::admin::delete_provider))
+        .route("/api/admin/settings", get(routes::settings::get_settings).put(routes::settings::update_settings))
         .route("/api/admin/reviews", get(routes::reviews::admin_list_reviews))
         .route("/api/admin/reviews/:id", put(routes::reviews::admin_set_hidden))
         .route("/api/admin/users", get(routes::admin::list_users_admin))

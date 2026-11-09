@@ -32,6 +32,29 @@ pub struct Provider {
     pub rating_avg: Option<f64>,
     #[sqlx(default)]
     pub rating_count: i64,
+    /// Set when contact details were withheld (admin setting, non-partner).
+    #[sqlx(default)]
+    pub limited: bool,
+    /// Up to 3 verified partners nearby, only on a limited detail view.
+    #[sqlx(skip)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub alternatives: Option<Vec<Provider>>,
+}
+
+impl Provider {
+    /// Keep only name, city, and type. Used when the admin setting hides
+    /// unclaimed providers' contact details.
+    pub fn strip_to_basics(&mut self) {
+        self.description = None;
+        self.documents_they_issue = None;
+        self.affiliate_type = None;
+        self.lead_capture_settings = None;
+        self.external_url = None;
+        self.admin_evidence_attachments = None;
+        self.pricing = None;
+        self.image_url = None;
+        self.limited = true;
+    }
 }
 
 #[derive(Debug, FromRow, Serialize)]
@@ -44,6 +67,9 @@ pub struct PlanItem {
     pub provider_location: Option<String>,
     pub provider_image_url: Option<String>,
     pub provider_pricing: Option<serde_json::Value>,
+    #[serde(skip)]
+    #[sqlx(default)]
+    pub provider_is_partner: bool,
     pub start_month: i32,
     pub duration_months: i32,
     pub notes: Option<String>,

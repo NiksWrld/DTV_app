@@ -127,6 +127,14 @@ export interface Provider {
   is_partner?: boolean;
   rating_avg?: number | null;
   rating_count?: number;
+  /** Contact details, prices, and links withheld (admin setting, not a partner yet). */
+  limited?: boolean;
+  /** Verified partners of the same type nearby, only on a limited detail view. */
+  alternatives?: Provider[];
+}
+
+export interface AppSettings {
+  hide_unclaimed_contacts: boolean;
 }
 
 export interface Review {

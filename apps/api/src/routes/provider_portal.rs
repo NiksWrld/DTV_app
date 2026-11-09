@@ -318,8 +318,21 @@ pub async fn delete_package(
 
 pub async fn list_packages(
     State(state): State<Arc<AppState>>,
+    Extension(user_id): Extension<Uuid>,
     Path(provider_id): Path<Uuid>,
 ) -> Result<Json<Vec<ProviderPackage>>, ApiError> {
+    // Prices are withheld for non-partners when the admin setting is on.
+    let partner: bool = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT claim_status = 'approved' AND verification_status IN ('verified_docs_seen', 'featured') \
+         FROM providers WHERE id = $1), false)",
+    )
+    .bind(provider_id)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|e| fail(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    if !partner && crate::routes::settings::hide_unclaimed_for(&state, user_id).await {
+        return Ok(Json(Vec::new()));
+    }
     let packages = sqlx::query_as::<_, ProviderPackage>(
         "SELECT id, provider_id, name, description, price_amount, currency, duration_days
          FROM provider_packages WHERE provider_id = $1 ORDER BY created_at",

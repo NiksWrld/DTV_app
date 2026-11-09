@@ -28,6 +28,7 @@ pub struct ProviderQuery {
 
 pub async fn list_providers(
     State(state): State<Arc<AppState>>,
+    Extension(user_id): Extension<Uuid>,
     Query(query): Query<ProviderQuery>,
 ) -> Result<Json<Vec<Provider>>, (StatusCode, Json<serde_json::Value>)> {
     let base = format!(
@@ -62,7 +63,11 @@ pub async fn list_providers(
                 Json(serde_json::json!({"error": format!("Database error: {}", e)})),
             )
         })?;
+    let hide = crate::routes::settings::hide_unclaimed_for(&state, user_id).await;
     for provider in &mut providers {
+        if hide && !provider.is_partner {
+            provider.strip_to_basics();
+        }
         sign_provider_image(&state, provider).await;
     }
 
@@ -91,10 +96,62 @@ pub async fn get_provider(
                 Json(serde_json::json!({"error": "Provider not found"})),
             )
         })?;
+    if !provider.is_partner && crate::routes::settings::hide_unclaimed_for(&state, user_id).await {
+        provider.strip_to_basics();
+        provider.alternatives = Some(partner_alternatives(&state, &provider).await);
+    }
     sign_provider_image(&state, &mut provider).await;
     crate::routes::provider_stats::record_view(&state, id, &format!("u:{user_id}"), Some(user_id)).await;
 
     Ok(Json(provider))
+}
+
+/// The provider's city: its first served city, else the last part of its location.
+fn city_of(provider: &Provider) -> Option<String> {
+    provider
+        .cities_served
+        .as_ref()
+        .and_then(|c| c.first().cloned())
+        .or_else(|| {
+            provider
+                .location
+                .as_deref()
+                .and_then(|l| l.rsplit(',').next())
+                .map(|s| s.trim().to_string())
+        })
+        .filter(|s| !s.is_empty())
+}
+
+/// Up to 3 verified partners of the same type, same city first.
+async fn partner_alternatives(state: &AppState, provider: &Provider) -> Vec<Provider> {
+    let city = city_of(provider);
+    let sql = format!(
+        r#"SELECT {cols} FROM providers
+           WHERE id <> $1 AND category = $2
+             AND claim_status = 'approved' AND verification_status IN ('verified_docs_seen', 'featured')
+           ORDER BY (
+               $3::text IS NOT NULL AND (
+                   $3 = ANY(COALESCE(cities_served, ARRAY[]::text[]))
+                   OR COALESCE(location, '') ILIKE '%' || $3 || '%'
+               )
+           ) DESC, name
+           LIMIT 3"#,
+        cols = PROVIDER_COLS
+    );
+    let mut rows = sqlx::query_as::<_, Provider>(&sql)
+        .bind(provider.id)
+        .bind(&provider.category)
+        .bind(city)
+        .fetch_all(&state.db)
+        .await
+        .unwrap_or_else(|e| {
+            tracing::warn!("Could not load partner alternatives: {}", e);
+            Vec::new()
+        });
+    for row in &mut rows {
+        sign_provider_image(state, row).await;
+    }
+    rows
 }
 
 pub async fn list_categories(
@@ -125,6 +182,7 @@ const PLAN_JOIN: &str = r#"
       pr.location AS provider_location,
       pr.image_url AS provider_image_url,
       pr.pricing AS provider_pricing,
+      (pr.claim_status = 'approved' AND pr.verification_status IN ('verified_docs_seen', 'featured')) AS provider_is_partner,
       p.start_month, p.duration_months, p.notes
     FROM user_plan_items p
     JOIN providers pr ON pr.id = p.provider_id
@@ -145,7 +203,11 @@ pub async fn list_plan(
                 Json(serde_json::json!({"error": format!("Database error: {}", e)})),
             )
         })?;
+    let hide = crate::routes::settings::hide_unclaimed_for(&state, user_id).await;
     for item in &mut items {
+        if hide && !item.provider_is_partner {
+            item.provider_pricing = None;
+        }
         sign_plan_image(&state, item).await;
     }
 
@@ -200,6 +262,9 @@ pub async fn add_plan_item(
             )
         })?;
 
+    if !item.provider_is_partner && crate::routes::settings::hide_unclaimed_for(&state, user_id).await {
+        item.provider_pricing = None;
+    }
     sign_plan_image(&state, &mut item).await;
     Ok(Json(item))
 }
@@ -245,6 +310,9 @@ pub async fn update_plan_item(
             )
         })?;
 
+    if !item.provider_is_partner && crate::routes::settings::hide_unclaimed_for(&state, user_id).await {
+        item.provider_pricing = None;
+    }
     sign_plan_image(&state, &mut item).await;
     Ok(Json(item))
 }

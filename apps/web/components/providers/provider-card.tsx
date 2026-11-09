@@ -59,7 +59,7 @@ export function ProviderCard({ provider }: { provider: Provider }) {
             {provider.affiliate_type && (
               <Badge variant="secondary" className="text-xs">Affiliate</Badge>
             )}
-            {provider.verification_status === 'verified_docs_seen' && (
+            {provider.verification_status === 'verified_docs_seen' && !provider.limited && (
               <Badge variant="secondary" className="text-xs">Verified DTV partner</Badge>
             )}
           </div>
@@ -69,6 +69,9 @@ export function ProviderCard({ provider }: { provider: Provider }) {
           {provider.location && ` · ${provider.location}`}
         </p>
         <RatingSummary average={provider.rating_avg} count={provider.rating_count} />
+        {provider.limited && (
+          <p className="text-xs font-medium text-amber-700">Not a DTV partner yet</p>
+        )}
         {provider.description && (
           <p className="text-sm text-muted-foreground line-clamp-2">{provider.description}</p>
         )}

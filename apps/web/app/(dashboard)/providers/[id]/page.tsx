@@ -19,6 +19,7 @@ import { SafeImage } from '@/components/safe-image';
 import { RequestLetterCard } from '@/components/providers/request-letter';
 import { ReviewsSection } from '@/components/providers/reviews-section';
 import { RatingSummary } from '@/components/providers/stars';
+import { ProviderCard } from '@/components/providers/provider-card';
 import { getRegionForCity, getBestMonths, SCORE_CONFIG } from '@/lib/weather-data';
 import type { Provider, ProviderPackage } from '@/types/dtv';
 
@@ -51,6 +52,7 @@ export default function ProviderDetailPage() {
   const [provider, setProvider] = useState<Provider | null>(null);
   const [packages, setPackages] = useState<ProviderPackage[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Editable fields
   const [imageUrlInput, setImageUrlInput] = useState('');
@@ -61,6 +63,10 @@ export default function ProviderDetailPage() {
   const [startMonth, setStartMonth] = useState('1');
   const [durationMonths, setDurationMonths] = useState('1');
   const [adding, setAdding] = useState(false);
+
+  useEffect(() => {
+    apiClient.account.get().then((a) => setIsAdmin(a.role === 'admin')).catch(() => setIsAdmin(false));
+  }, []);
 
   useEffect(() => {
     apiClient.providerPortal.packages(id).then(setPackages).catch(() => setPackages([]));
@@ -160,10 +166,10 @@ export default function ProviderDetailPage() {
       <div className="space-y-1">
         <div className="flex items-center gap-2 flex-wrap">
           <h1 className="text-2xl font-bold">{provider.name}</h1>
-          {provider.verification_status === 'verified_docs_seen' && (
+          {provider.verification_status === 'verified_docs_seen' && !provider.limited && (
             <Badge variant="secondary">Verified DTV Provider</Badge>
           )}
-          {provider.supports_dtv && (
+          {provider.supports_dtv && !provider.limited && (
             <Badge variant="outline">DTV Documents Issued</Badge>
           )}
         </div>
@@ -180,6 +186,28 @@ export default function ProviderDetailPage() {
           </div>
         )}
       </div>
+
+      {provider.limited && (
+        <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/40">
+          <div>
+            <h2 className="font-semibold">Not a DTV partner yet</h2>
+            <p className="text-sm text-muted-foreground">
+              {provider.name} hasn&rsquo;t joined the app yet, so we can&rsquo;t show prices or contact details, and it
+              can&rsquo;t issue your DTV letter here.
+            </p>
+          </div>
+          {provider.alternatives && provider.alternatives.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Verified DTV partners you can book instead</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {provider.alternatives.map((alt) => (
+                  <ProviderCard key={alt.id} provider={alt} />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Description */}
       {provider.description && (
@@ -269,6 +297,7 @@ export default function ProviderDetailPage() {
       )}
 
       {/* Admin: image + website */}
+      {isAdmin && (
       <div className="border rounded-lg p-4 space-y-4">
         <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Admin</h2>
 
@@ -320,6 +349,7 @@ export default function ProviderDetailPage() {
           {saving ? 'Saving...' : 'Save changes'}
         </Button>
       </div>
+      )}
 
       {/* Add to plan */}
       {provider.listing_type === 'dtv_program' && (

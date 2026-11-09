@@ -196,6 +196,11 @@ export const apiClient = {
       stats: () =>
         request<import('@/types/dtv').ProviderViewRow[]>('GET', '/api/admin/provider-stats'),
     },
+    settings: {
+      get: () => request<import('@/types/dtv').AppSettings>('GET', '/api/admin/settings'),
+      update: (data: import('@/types/dtv').AppSettings) =>
+        request<import('@/types/dtv').AppSettings>('PUT', '/api/admin/settings', data),
+    },
     reviews: {
       list: () => request<import('@/types/dtv').Review[]>('GET', '/api/admin/reviews'),
       setHidden: (id: string, hidden: boolean) =>

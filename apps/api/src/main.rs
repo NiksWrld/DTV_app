@@ -22,6 +22,96 @@ pub struct AppState {
     pub storage: integrations::s3::StorageClient,
 }
 
+/// Migration files run at startup, in order. Each file runs once and is then
+/// recorded in `schema_migrations`. 005 is not listed: checklist templates come
+/// from infra/seeds/checklist_items.sql.
+const MIGRATIONS: &[(&str, &str)] = &[
+    ("001_initial.sql", include_str!("../../../infra/migrations/001_initial.sql")),
+    ("002_checklist_items.sql", include_str!("../../../infra/migrations/002_checklist_items.sql")),
+    ("003_providers.sql", include_str!("../../../infra/migrations/003_providers.sql")),
+    ("004_guides.sql", include_str!("../../../infra/migrations/004_guides.sql")),
+    ("006_providers_plan.sql", include_str!("../../../infra/migrations/006_providers_plan.sql")),
+    ("007_listing_type.sql", include_str!("../../../infra/migrations/007_listing_type.sql")),
+    ("008_user_account.sql", include_str!("../../../infra/migrations/008_user_account.sql")),
+    ("009_compliance.sql", include_str!("../../../infra/migrations/009_compliance.sql")),
+    ("010_provider_certified.sql", include_str!("../../../infra/migrations/010_provider_certified.sql")),
+    ("011_passport_expiry.sql", include_str!("../../../infra/migrations/011_passport_expiry.sql")),
+    ("012_provider_portal.sql", include_str!("../../../infra/migrations/012_provider_portal.sql")),
+    ("013_embassy_override.sql", include_str!("../../../infra/migrations/013_embassy_override.sql")),
+    ("014_provider_views.sql", include_str!("../../../infra/migrations/014_provider_views.sql")),
+    ("015_provider_bookings.sql", include_str!("../../../infra/migrations/015_provider_bookings.sql")),
+    ("016_provider_reviews.sql", include_str!("../../../infra/migrations/016_provider_reviews.sql")),
+    ("017_app_settings.sql", include_str!("../../../infra/migrations/017_app_settings.sql")),
+    ("018_dedupe_providers.sql", include_str!("../../../infra/migrations/018_dedupe_providers.sql")),
+];
+
+/// Files up to here were written before tracking existed and were re-run on
+/// every start, so on older databases their CREATE statements fail with
+/// "already exists". Those errors are expected; the file is still recorded.
+const LAST_UNTRACKED_MIGRATION: &str = "013_embassy_override.sql";
+
+/// Split a migration file into statements, dropping chunks that are only comments.
+fn statements(sql: &str) -> impl Iterator<Item = &str> {
+    sql.split(';').map(str::trim).filter(|chunk| {
+        chunk
+            .lines()
+            .any(|line| !line.trim().is_empty() && !line.trim_start().starts_with("--"))
+    })
+}
+
+async fn run_migrations(db: &sqlx::PgPool) {
+    if let Err(e) = sqlx::query(
+        "CREATE TABLE IF NOT EXISTS schema_migrations (
+            filename TEXT PRIMARY KEY,
+            applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )",
+    )
+    .execute(db)
+    .await
+    {
+        tracing::error!("Could not create schema_migrations: {}", e);
+        return;
+    }
+    let applied: std::collections::HashSet<String> =
+        sqlx::query_scalar::<_, String>("SELECT filename FROM schema_migrations")
+            .fetch_all(db)
+            .await
+            .unwrap_or_default()
+            .into_iter()
+            .collect();
+
+    for (name, sql) in MIGRATIONS {
+        if applied.contains(*name) {
+            continue;
+        }
+        let legacy = *name <= LAST_UNTRACKED_MIGRATION;
+        let mut failed = false;
+        for statement in statements(sql) {
+            if let Err(e) = sqlx::query(statement).execute(db).await {
+                if legacy {
+                    tracing::debug!("Migration {} note: {}", name, e);
+                } else {
+                    tracing::warn!("Migration {} failed: {}", name, e);
+                    failed = true;
+                }
+            }
+        }
+        if failed {
+            tracing::warn!("Migration {} not recorded; it will be retried on the next start", name);
+            continue;
+        }
+        if let Err(e) = sqlx::query("INSERT INTO schema_migrations (filename) VALUES ($1) ON CONFLICT DO NOTHING")
+            .bind(name)
+            .execute(db)
+            .await
+        {
+            tracing::warn!("Could not record migration {}: {}", name, e);
+        } else {
+            tracing::info!("Applied migration {}", name);
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt()
@@ -37,25 +127,7 @@ async fn main() {
         .await
         .expect("Failed to connect to database");
 
-    // Run migrations
-    let migration_files = [
-        include_str!("../../../infra/migrations/001_initial.sql"),
-        include_str!("../../../infra/migrations/002_checklist_items.sql"),
-        include_str!("../../../infra/migrations/003_providers.sql"),
-        include_str!("../../../infra/migrations/004_guides.sql"),
-        include_str!("../../../infra/migrations/006_providers_plan.sql"),
-        include_str!("../../../infra/migrations/007_listing_type.sql"),
-        include_str!("../../../infra/migrations/008_user_account.sql"),
-        include_str!("../../../infra/migrations/009_compliance.sql"),
-        include_str!("../../../infra/migrations/010_provider_certified.sql"),
-    ];
-    for sql in &migration_files {
-        for statement in sql.split(';').map(|s| s.trim()).filter(|s| !s.is_empty()) {
-            if let Err(e) = sqlx::query(statement).execute(&db).await {
-                tracing::warn!("Migration note: {}", e);
-            }
-        }
-    }
+    run_migrations(&db).await;
 
     // Seed data (idempotent)
     let embassy_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM embassies")
@@ -70,7 +142,7 @@ async fn main() {
             include_str!("../../../infra/seeds/guides.sql"),
         ];
         for sql in &seed_files {
-            for statement in sql.split(';').map(|s| s.trim()).filter(|s| !s.is_empty()) {
+            for statement in statements(sql) {
                 if let Err(e) = sqlx::query(statement).execute(&db).await {
                     tracing::warn!("Seed note: {}", e);
                 }

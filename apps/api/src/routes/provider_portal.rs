@@ -83,6 +83,20 @@ pub struct SearchQuery {
     pub q: Option<String>,
 }
 
+/// Provider names are unique (case-insensitive), so a clash means the school is
+/// already listed and should be claimed instead.
+fn listing_write_error(e: sqlx::Error) -> ApiError {
+    if let sqlx::Error::Database(ref db) = e {
+        if db.code().as_deref() == Some("23505") {
+            return fail(
+                StatusCode::CONFLICT,
+                "A listing with this name already exists. Search for it under \"Claim an existing listing\".",
+            );
+        }
+    }
+    fail(StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+}
+
 async fn ensure_provider(state: &AppState, user_id: Uuid) -> Result<(), ApiError> {
     let role: String = sqlx::query_scalar("SELECT role FROM users WHERE id = $1")
         .bind(user_id)
@@ -172,7 +186,7 @@ pub async fn create_listing(
     .bind(user_id)
     .fetch_one(&state.db)
     .await
-    .map_err(|e| fail(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    .map_err(listing_write_error)?;
 
     Ok(Json(present_listing(&state, listing).await))
 }
@@ -203,7 +217,7 @@ pub async fn update_listing(
     .bind(user_id)
     .fetch_optional(&state.db)
     .await
-    .map_err(|e| fail(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+    .map_err(listing_write_error)?
     .ok_or_else(|| fail(StatusCode::NOT_FOUND, "No listing to update"))?;
     Ok(Json(present_listing(&state, listing).await))
 }

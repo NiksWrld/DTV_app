@@ -103,7 +103,7 @@ async fn create_account(
 
     Ok(Json(AuthResponse {
         token,
-        user: user.into(),
+        user: crate::routes::account::with_fresh_avatar(&state, user).await,
     }))
 }
 
@@ -167,7 +167,7 @@ pub async fn login(
 
     Ok(Json(AuthResponse {
         token,
-        user: user.into(),
+        user: crate::routes::account::with_fresh_avatar(&state, user).await,
     }))
 }
 
@@ -192,5 +192,5 @@ pub async fn me(
             )
         })?;
 
-    Ok(Json(user.into()))
+    Ok(Json(crate::routes::account::with_fresh_avatar(&state, user).await))
 }

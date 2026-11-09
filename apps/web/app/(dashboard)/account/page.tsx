@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { apiClient } from '@/lib/api-client';
+import { SafeImage } from '@/components/safe-image';
 
 type Account = Awaited<ReturnType<typeof apiClient.account.get>>;
 
@@ -153,15 +154,12 @@ export default function AccountPage() {
           <CardTitle className="text-base">Profile photo</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-6">
-          {account.avatar_url ? (
-            <img
-              src={account.avatar_url}
-              alt="Avatar"
-              className="w-24 h-24 rounded-full object-cover border"
-            />
-          ) : (
-            <Initials name={account.display_name} email={account.email} />
-          )}
+          <SafeImage
+            src={account.avatar_url}
+            alt="Avatar"
+            className="h-24 w-24 rounded-full border object-cover"
+            fallback={<Initials name={account.display_name} email={account.email} />}
+          />
           <div className="space-y-2">
             <input
               ref={avatarRef}

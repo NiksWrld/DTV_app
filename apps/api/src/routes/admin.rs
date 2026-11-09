@@ -44,12 +44,15 @@ fn parse_str_array(v: &serde_json::Value) -> Vec<String> {
 pub async fn list_providers_admin(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<Vec<Provider>>, (StatusCode, Json<serde_json::Value>)> {
-    let providers = sqlx::query_as::<_, Provider>(
+    let mut providers = sqlx::query_as::<_, Provider>(
         &format!("SELECT {} FROM providers ORDER BY listing_type, category, name", PROVIDER_COLS),
     )
     .fetch_all(&state.db)
     .await
     .map_err(db_err)?;
+    for provider in &mut providers {
+        crate::routes::providers::sign_provider_image(&state, provider).await;
+    }
 
     Ok(Json(providers))
 }
@@ -64,7 +67,7 @@ pub async fn create_provider(
         .filter(|v| !v.is_null())
         .cloned();
 
-    let provider = sqlx::query_as::<_, Provider>(
+    let mut provider = sqlx::query_as::<_, Provider>(
         &format!(r#"INSERT INTO providers
            (name, category, listing_type, dtv_certified, description, location,
             cities_served, dtv_path_relevance, external_url, image_url, pricing,
@@ -89,6 +92,7 @@ pub async fn create_provider(
     .fetch_one(&state.db)
     .await
     .map_err(db_err)?;
+    crate::routes::providers::sign_provider_image(&state, &mut provider).await;
 
     Ok(Json(provider))
 }
@@ -104,7 +108,7 @@ pub async fn update_provider(
         .filter(|v| !v.is_null())
         .cloned();
 
-    let provider = sqlx::query_as::<_, Provider>(
+    let mut provider = sqlx::query_as::<_, Provider>(
         &format!(r#"UPDATE providers SET
            name                = COALESCE($1, name),
            category            = COALESCE($2, category),
@@ -139,6 +143,7 @@ pub async fn update_provider(
     .fetch_one(&state.db)
     .await
     .map_err(db_err)?;
+    crate::routes::providers::sign_provider_image(&state, &mut provider).await;
 
     Ok(Json(provider))
 }

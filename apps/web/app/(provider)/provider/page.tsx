@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { apiClient } from '@/lib/api-client';
+import { SafeImage } from '@/components/safe-image';
 import type { OwnedListing, ProviderPackage } from '@/types/dtv';
 
 const CATEGORIES = [
@@ -182,9 +183,12 @@ export default function ProviderDashboardPage() {
               <CardDescription>JPG or PNG, stored with your other uploads.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              {listing.image_url && (
-                <img src={listing.image_url} alt="" className="h-40 w-full rounded-lg object-cover" />
-              )}
+              <SafeImage
+                src={listing.image_url}
+                alt=""
+                className="h-40 w-full rounded-lg object-cover"
+                fallback={<div className="flex h-40 w-full items-center justify-center rounded-lg bg-muted text-sm text-muted-foreground">No photo yet</div>}
+              />
               <label className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-lg border px-3 text-sm font-medium">
                 Add photo
                 <input

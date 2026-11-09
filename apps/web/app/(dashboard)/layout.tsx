@@ -13,6 +13,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { apiClient } from '@/lib/api-client';
+import { SafeImage } from '@/components/safe-image';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard' },
@@ -256,14 +257,17 @@ export default function DashboardLayout({
 }
 
 function AccountMark({ acct }: { acct: AccountSummary | null }) {
-  if (acct?.avatar_url) {
-    return (
-      <img src={acct.avatar_url} alt="" className="size-7 shrink-0 rounded-full object-cover" />
-    );
-  }
+  const initials = (acct?.display_name ?? acct?.email ?? '?').slice(0, 2).toUpperCase();
   return (
-    <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary">
-      {(acct?.display_name ?? acct?.email ?? '?').slice(0, 2).toUpperCase()}
-    </div>
+    <SafeImage
+      src={acct?.avatar_url}
+      alt=""
+      className="size-7 shrink-0 rounded-full object-cover"
+      fallback={
+        <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary">
+          {initials}
+        </div>
+      }
+    />
   );
 }

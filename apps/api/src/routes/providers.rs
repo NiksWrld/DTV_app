@@ -49,7 +49,7 @@ pub async fn list_providers(
     }
     qb.push(" ORDER BY name");
 
-    let providers = qb
+    let mut providers = qb
         .build_query_as::<Provider>()
         .fetch_all(&state.db)
         .await
@@ -59,6 +59,9 @@ pub async fn list_providers(
                 Json(serde_json::json!({"error": format!("Database error: {}", e)})),
             )
         })?;
+    for provider in &mut providers {
+        sign_provider_image(&state, provider).await;
+    }
 
     Ok(Json(providers))
 }
@@ -68,7 +71,7 @@ pub async fn get_provider(
     Path(id): Path<Uuid>,
 ) -> Result<Json<Provider>, (StatusCode, Json<serde_json::Value>)> {
     let sql = format!("SELECT {} FROM providers WHERE id = $1", PROVIDER_COLS);
-    let provider = sqlx::query_as::<_, Provider>(&sql)
+    let mut provider = sqlx::query_as::<_, Provider>(&sql)
         .bind(id)
         .fetch_optional(&state.db)
         .await
@@ -84,6 +87,7 @@ pub async fn get_provider(
                 Json(serde_json::json!({"error": "Provider not found"})),
             )
         })?;
+    sign_provider_image(&state, &mut provider).await;
 
     Ok(Json(provider))
 }
@@ -126,7 +130,7 @@ pub async fn list_plan(
     Extension(user_id): Extension<Uuid>,
 ) -> Result<Json<Vec<PlanItem>>, (StatusCode, Json<serde_json::Value>)> {
     let sql = format!("{} WHERE p.user_id = $1 ORDER BY p.start_month", PLAN_JOIN);
-    let items = sqlx::query_as::<_, PlanItem>(&sql)
+    let mut items = sqlx::query_as::<_, PlanItem>(&sql)
         .bind(user_id)
         .fetch_all(&state.db)
         .await
@@ -136,6 +140,9 @@ pub async fn list_plan(
                 Json(serde_json::json!({"error": format!("Database error: {}", e)})),
             )
         })?;
+    for item in &mut items {
+        sign_plan_image(&state, item).await;
+    }
 
     Ok(Json(items))
 }
@@ -177,7 +184,7 @@ pub async fn add_plan_item(
     })?;
 
     let sql = format!("{} WHERE p.id = $1", PLAN_JOIN);
-    let item = sqlx::query_as::<_, PlanItem>(&sql)
+    let mut item = sqlx::query_as::<_, PlanItem>(&sql)
         .bind(item_id)
         .fetch_one(&state.db)
         .await
@@ -188,6 +195,7 @@ pub async fn add_plan_item(
             )
         })?;
 
+    sign_plan_image(&state, &mut item).await;
     Ok(Json(item))
 }
 
@@ -220,7 +228,7 @@ pub async fn update_plan_item(
     })?;
 
     let sql = format!("{} WHERE p.id = $1 AND p.user_id = $2", PLAN_JOIN);
-    let item = sqlx::query_as::<_, PlanItem>(&sql)
+    let mut item = sqlx::query_as::<_, PlanItem>(&sql)
         .bind(item_id)
         .bind(user_id)
         .fetch_one(&state.db)
@@ -232,6 +240,7 @@ pub async fn update_plan_item(
             )
         })?;
 
+    sign_plan_image(&state, &mut item).await;
     Ok(Json(item))
 }
 
@@ -253,4 +262,12 @@ pub async fn delete_plan_item(
         })?;
 
     Ok(Json(serde_json::json!({"status": "deleted"})))
+}
+
+pub(crate) async fn sign_provider_image(state: &AppState, provider: &mut Provider) {
+    provider.image_url = state.storage.present_opt(provider.image_url.take()).await;
+}
+
+async fn sign_plan_image(state: &AppState, item: &mut PlanItem) {
+    item.provider_image_url = state.storage.present_opt(item.provider_image_url.take()).await;
 }

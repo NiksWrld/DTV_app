@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
+import { SafeImage } from '@/components/safe-image';
 import type { Provider } from '@/types/dtv';
 
 export const CATEGORY_LABELS: Record<string, string> = {
@@ -39,11 +40,12 @@ export function ProviderCard({ provider }: { provider: Provider }) {
       href={`/providers/${provider.id}`}
       className="group block rounded-xl border bg-card hover:shadow-md transition-shadow overflow-hidden"
     >
-      {provider.image_url ? (
-        <img src={provider.image_url} alt={provider.name} className="w-full h-44 object-cover" />
-      ) : (
-        <CategoryPlaceholder category={provider.category} />
-      )}
+      <SafeImage
+        src={provider.image_url}
+        alt={provider.name}
+        className="h-44 w-full object-cover"
+        fallback={<CategoryPlaceholder category={provider.category} />}
+      />
       <div className="p-4 space-y-2">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <h3 className="min-w-0 font-semibold leading-tight break-words transition-colors group-hover:text-primary">

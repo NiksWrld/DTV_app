@@ -127,6 +127,10 @@ pub async fn get_mine(
         Vec::new()
     };
 
+    let listing = match listing {
+        Some(listing) => Some(present_listing(&state, listing).await),
+        None => None,
+    };
     Ok(Json(json!({ "listing": listing, "packages": packages })))
 }
 
@@ -166,7 +170,7 @@ pub async fn create_listing(
     .await
     .map_err(|e| fail(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    Ok(Json(listing))
+    Ok(Json(present_listing(&state, listing).await))
 }
 
 pub async fn update_listing(
@@ -197,7 +201,7 @@ pub async fn update_listing(
     .await
     .map_err(|e| fail(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
     .ok_or_else(|| fail(StatusCode::NOT_FOUND, "No listing to update"))?;
-    Ok(Json(listing))
+    Ok(Json(present_listing(&state, listing).await))
 }
 
 pub async fn search_claimable(
@@ -248,7 +252,7 @@ pub async fn claim_listing(
     .await
     .map_err(|e| fail(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
     .ok_or_else(|| fail(StatusCode::CONFLICT, "That listing is already claimed"))?;
-    Ok(Json(listing))
+    Ok(Json(present_listing(&state, listing).await))
 }
 
 pub async fn add_package(
@@ -361,12 +365,6 @@ pub async fn upload_photo(
         .upload(&key, data, canonical)
         .await
         .map_err(|e| fail(StatusCode::INTERNAL_SERVER_ERROR, e))?;
-    let url = state
-        .storage
-        .presigned_url(&key, 60 * 60 * 24 * 7)
-        .await
-        .unwrap_or(key);
-
     let listing = sqlx::query_as::<_, OwnedListing>(&format!(
         r#"UPDATE providers SET
              photo_urls = COALESCE(photo_urls, '[]'::jsonb) || jsonb_build_array($1::text),
@@ -374,13 +372,13 @@ pub async fn upload_photo(
            WHERE owner_user_id = $2
            RETURNING {LISTING_COLS}"#
     ))
-    .bind(&url)
+    .bind(&key)
     .bind(user_id)
     .fetch_optional(&state.db)
     .await
     .map_err(|e| fail(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
     .ok_or_else(|| fail(StatusCode::NOT_FOUND, "Create a listing before adding photos"))?;
-    Ok(Json(listing))
+    Ok(Json(present_listing(&state, listing).await))
 }
 
 #[derive(Debug, FromRow, Serialize)]
@@ -436,4 +434,18 @@ pub async fn review_claim(
         return Err(fail(StatusCode::NOT_FOUND, "Listing not found"));
     }
     Ok(Json(json!({ "status": action })))
+}
+
+async fn present_listing(state: &AppState, mut listing: OwnedListing) -> OwnedListing {
+    listing.image_url = state.storage.present_opt(listing.image_url.take()).await;
+    if let Some(urls) = listing.photo_urls.as_array() {
+        let mut signed = Vec::with_capacity(urls.len());
+        for url in urls {
+            if let Some(value) = url.as_str() {
+                signed.push(serde_json::Value::String(state.storage.present(value).await));
+            }
+        }
+        listing.photo_urls = serde_json::Value::Array(signed);
+    }
+    listing
 }

@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { apiClient } from '@/lib/api-client';
+import { SafeImage } from '@/components/safe-image';
 import { getRegionForCity, getBestMonths, SCORE_CONFIG } from '@/lib/weather-data';
 import type { Provider, ProviderPackage } from '@/types/dtv';
 
@@ -137,16 +138,19 @@ export default function ProviderDetailPage() {
       </button>
 
       {/* Hero image */}
-      <div className="rounded-xl overflow-hidden border">
-        {displayImage ? (
-          <img src={displayImage} alt={provider.name} className="w-full h-56 object-cover" />
-        ) : (
-          <div className={`w-full h-56 ${colorClass} flex items-center justify-center`}>
-            <span className="px-4 text-center text-xl font-bold text-white/60 sm:text-3xl">
-              {CATEGORY_LABELS[provider.category] ?? provider.category}
-            </span>
-          </div>
-        )}
+      <div className="overflow-hidden rounded-xl border">
+        <SafeImage
+          src={displayImage}
+          alt={provider.name}
+          className="h-56 w-full object-cover"
+          fallback={
+            <div className={`flex h-56 w-full items-center justify-center ${colorClass}`}>
+              <span className="px-4 text-center text-xl font-bold text-white/60 sm:text-3xl">
+                {CATEGORY_LABELS[provider.category] ?? provider.category}
+              </span>
+            </div>
+          }
+        />
       </div>
 
       {/* Header */}
@@ -293,11 +297,11 @@ export default function ProviderDetailPage() {
             placeholder="https://example.com/image.jpg"
           />
           {imageUrlInput && (
-            <img
+            <SafeImage
               src={imageUrlInput}
               alt="Preview"
-              className="mt-2 h-24 w-full object-cover rounded-lg border"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              className="mt-2 h-24 w-full rounded-lg border object-cover"
+              fallback={<div className="mt-2 flex h-24 w-full items-center justify-center rounded-lg border bg-muted text-xs text-muted-foreground">Image unavailable</div>}
             />
           )}
         </div>

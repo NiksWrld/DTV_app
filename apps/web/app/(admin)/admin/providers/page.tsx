@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { apiClient } from '@/lib/api-client';
+import { SafeImage } from '@/components/safe-image';
 import type { Provider } from '@/types/dtv';
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -34,10 +35,12 @@ function ProviderRow({
     <tr className="border-b transition-colors hover:bg-muted/30">
       <td className="px-4 py-3">
         <div className="flex items-center gap-3">
-          {provider.image_url
-            ? <img src={provider.image_url} alt="" className="size-10 shrink-0 rounded border object-cover" />
-            : <div className="size-10 shrink-0 rounded bg-muted" />
-          }
+          <SafeImage
+            src={provider.image_url}
+            alt=""
+            className="size-10 shrink-0 rounded border object-cover"
+            fallback={<div className="size-10 shrink-0 rounded bg-muted" />}
+          />
           <div className="min-w-0">
             <p className="text-sm font-medium break-words">{provider.name}</p>
             {provider.location && <p className="text-xs text-muted-foreground">{provider.location}</p>}
@@ -96,10 +99,12 @@ function ProviderGroup({
         {rows.map((provider) => (
           <article key={provider.id} className="space-y-3 rounded-lg border p-4">
             <div className="flex items-start gap-3">
-              {provider.image_url
-                ? <img src={provider.image_url} alt="" className="size-12 shrink-0 rounded border object-cover" />
-                : <div className="size-12 shrink-0 rounded bg-muted" />
-              }
+              <SafeImage
+                src={provider.image_url}
+                alt=""
+                className="size-12 shrink-0 rounded border object-cover"
+                fallback={<div className="size-12 shrink-0 rounded bg-muted" />}
+              />
               <div className="min-w-0">
                 <p className="font-medium break-words">{provider.name}</p>
                 {provider.location && <p className="text-xs text-muted-foreground">{provider.location}</p>}

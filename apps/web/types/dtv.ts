@@ -66,6 +66,8 @@ export interface Embassy {
   name: string;
   website_url?: string;
   notes?: string;
+  requires_sat_for_muay_thai?: boolean;
+  sat_note?: string | null;
 }
 
 export interface ChecklistItem {
@@ -131,6 +133,29 @@ export interface Provider {
   limited?: boolean;
   /** Verified partners of the same type nearby, only on a limited detail view. */
   alternatives?: Provider[];
+  /** Admin-approved Sports Authority of Thailand recognition that has not expired. */
+  sat_certified?: boolean;
+  sat_certificate_number?: string | null;
+  sat_valid_until?: string | null;
+}
+
+export type SatStatus = 'none' | 'pending' | 'approved' | 'rejected';
+
+export interface SatInfo {
+  provider_id: string;
+  provider_name: string;
+  category: string;
+  location?: string | null;
+  owner_email?: string | null;
+  sat_status: SatStatus;
+  sat_certified: boolean;
+  sat_certificate_number?: string | null;
+  sat_valid_until?: string | null;
+  sat_evidence_filename?: string | null;
+  has_evidence: boolean;
+  sat_submitted_at?: string | null;
+  sat_reviewed_at?: string | null;
+  sat_review_note?: string | null;
 }
 
 export interface AppSettings {
@@ -236,6 +261,8 @@ export interface PlanItem {
   provider_location?: string;
   provider_image_url?: string;
   provider_pricing?: Pricing;
+  provider_sat_certified?: boolean;
+  provider_sat_valid_until?: string | null;
   start_month: number;
   duration_months: number;
   notes?: string;

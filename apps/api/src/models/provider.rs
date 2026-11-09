@@ -35,6 +35,13 @@ pub struct Provider {
     /// Set when contact details were withheld (admin setting, non-partner).
     #[sqlx(default)]
     pub limited: bool,
+    /// Admin-approved SAT recognition that has not expired.
+    #[sqlx(default)]
+    pub sat_certified: bool,
+    #[sqlx(default)]
+    pub sat_certificate_number: Option<String>,
+    #[sqlx(default)]
+    pub sat_valid_until: Option<chrono::NaiveDate>,
     /// Up to 3 verified partners nearby, only on a limited detail view.
     #[sqlx(skip)]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -70,6 +77,10 @@ pub struct PlanItem {
     #[serde(skip)]
     #[sqlx(default)]
     pub provider_is_partner: bool,
+    #[sqlx(default)]
+    pub provider_sat_certified: bool,
+    #[sqlx(default)]
+    pub provider_sat_valid_until: Option<chrono::NaiveDate>,
     pub start_month: i32,
     pub duration_months: i32,
     pub notes: Option<String>,

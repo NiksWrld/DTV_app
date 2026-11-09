@@ -80,6 +80,25 @@ export const apiClient = {
     letter: (id: string) =>
       request<{ url: string; filename: string }>('GET', `/api/provider/requests/${id}/letter`),
   },
+  providerSat: {
+    mine: () => request<import('@/types/dtv').SatInfo>('GET', '/api/provider/sat'),
+    submit: async (file: File, certificateNumber?: string, validUntil?: string) => {
+      const token = localStorage.getItem('token');
+      const form = new FormData();
+      form.append('file', file);
+      if (certificateNumber) form.append('certificate_number', certificateNumber);
+      if (validUntil) form.append('valid_until', validUntil);
+      const res = await fetch('/api/provider/sat', {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: form,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Upload failed');
+      return data as import('@/types/dtv').SatInfo;
+    },
+    evidence: () => request<{ url: string; filename?: string }>('GET', '/api/provider/sat/evidence'),
+  },
   bookings: {
     mine: () => request<import('@/types/dtv').Booking[]>('GET', '/api/bookings'),
     create: (providerId: string, data: { message?: string; package_id?: string; preferred_start?: string }) =>
@@ -118,11 +137,7 @@ export const apiClient = {
       request<{ id: string }>('PUT', '/api/onboarding/profile', data),
   },
   embassies: {
-    list: () =>
-      request<Array<{ id: string; country: string; city: string; name: string; website_url?: string; notes?: string }>>(
-        'GET',
-        '/api/embassies',
-      ),
+    list: () => request<import('@/types/dtv').Embassy[]>('GET', '/api/embassies'),
     match: (country: string, city?: string) =>
       request<{ id: string; country: string; city: string; name: string; website_url?: string; notes?: string } | null>(
         'POST',
@@ -195,6 +210,17 @@ export const apiClient = {
         request('PUT', `/api/admin/providers/${id}/verify`, { verification_status: status }),
       stats: () =>
         request<import('@/types/dtv').ProviderViewRow[]>('GET', '/api/admin/provider-stats'),
+    },
+    sat: {
+      list: () => request<import('@/types/dtv').SatInfo[]>('GET', '/api/admin/sat'),
+      review: (
+        providerId: string,
+        data: { action: 'approve' | 'reject' | 'revoke'; certificate_number?: string; valid_until?: string; note?: string },
+      ) => request<import('@/types/dtv').SatInfo>('POST', `/api/admin/providers/${providerId}/sat`, data),
+      evidence: (providerId: string) =>
+        request<{ url: string; filename?: string }>('GET', `/api/admin/providers/${providerId}/sat/evidence`),
+      embassyRule: (embassyId: string, data: { requires_sat_for_muay_thai: boolean; sat_note?: string }) =>
+        request<import('@/types/dtv').Embassy>('PUT', `/api/admin/embassies/${embassyId}/sat`, data),
     },
     settings: {
       get: () => request<import('@/types/dtv').AppSettings>('GET', '/api/admin/settings'),

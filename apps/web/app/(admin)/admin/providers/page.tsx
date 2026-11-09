@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { apiClient } from '@/lib/api-client';
 import { SafeImage } from '@/components/safe-image';
+import { SatBadge } from '@/components/providers/sat-badge';
+import { SatReviewsSection } from '@/components/admin/sat-reviews';
 import type { Provider, ProviderViewRow } from '@/types/dtv';
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -72,6 +74,7 @@ function ProviderRow({
           {provider.dtv_certified && (
             <Badge className="bg-emerald-600 text-xs text-white hover:bg-emerald-600">DTV Certified</Badge>
           )}
+          <SatBadge certified={provider.sat_certified} validUntil={provider.sat_valid_until} />
         </div>
       </td>
       <td className="px-4 py-3 text-sm tabular-nums">
@@ -139,6 +142,7 @@ function ProviderGroup({
               {provider.dtv_certified && (
                 <Badge className="bg-emerald-600 text-xs text-white hover:bg-emerald-600">DTV Certified</Badge>
               )}
+              <SatBadge certified={provider.sat_certified} validUntil={provider.sat_valid_until} />
             </div>
             <div className="flex flex-wrap gap-2">
               <Link href={`/admin/providers/${provider.id}`}>
@@ -260,6 +264,8 @@ export default function AdminProvidersPage() {
           ))}
         </div>
       )}
+
+      <SatReviewsSection />
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <Input

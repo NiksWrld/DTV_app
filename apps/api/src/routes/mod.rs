@@ -13,3 +13,4 @@ pub mod provider_stats;
 pub mod bookings;
 pub mod reviews;
 pub mod settings;
+pub mod sat;

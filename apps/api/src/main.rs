@@ -43,6 +43,7 @@ const MIGRATIONS: &[(&str, &str)] = &[
     ("016_provider_reviews.sql", include_str!("../../../infra/migrations/016_provider_reviews.sql")),
     ("017_app_settings.sql", include_str!("../../../infra/migrations/017_app_settings.sql")),
     ("018_dedupe_providers.sql", include_str!("../../../infra/migrations/018_dedupe_providers.sql")),
+    ("019_sat_certification.sql", include_str!("../../../infra/migrations/019_sat_certification.sql")),
 ];
 
 /// Files up to here were written before tracking existed and were re-run on
@@ -229,6 +230,8 @@ async fn main() {
         .route("/api/provider/packages", post(routes::provider_portal::add_package))
         .route("/api/provider/packages/:id", delete(routes::provider_portal::delete_package))
         .route("/api/provider/photos", post(routes::provider_portal::upload_photo))
+        .route("/api/provider/sat", get(routes::sat::my_sat).post(routes::sat::submit_sat))
+        .route("/api/provider/sat/evidence", get(routes::sat::my_sat_evidence))
         .route("/api/plan", get(routes::providers::list_plan).post(routes::providers::add_plan_item))
         .route("/api/plan/:id", put(routes::providers::update_plan_item).delete(routes::providers::delete_plan_item))
         .route("/api/guides", get(routes::guides::list_guides))
@@ -252,6 +255,10 @@ async fn main() {
         .route("/api/admin/checklist", get(routes::admin::list_templates).post(routes::admin::create_template))
         .route("/api/admin/checklist/:id", put(routes::admin::update_template).delete(routes::admin::delete_template))
         .route("/api/admin/embassies", get(routes::admin::list_embassies))
+        .route("/api/admin/embassies/:id/sat", put(routes::sat::admin_update_embassy_rule))
+        .route("/api/admin/sat", get(routes::sat::admin_list))
+        .route("/api/admin/providers/:id/sat", post(routes::sat::admin_review))
+        .route("/api/admin/providers/:id/sat/evidence", get(routes::sat::admin_evidence))
         .route("/api/admin/embassy-overrides", post(routes::admin::create_override))
         .route("/api/admin/providers", get(routes::admin::list_providers_admin).post(routes::admin::create_provider))
         .route("/api/admin/providers/:id/verify", put(routes::admin::verify_provider))

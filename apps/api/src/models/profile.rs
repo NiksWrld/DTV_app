@@ -63,4 +63,8 @@ pub struct Embassy {
     pub name: String,
     pub website_url: Option<String>,
     pub notes: Option<String>,
+    #[sqlx(default)]
+    pub requires_sat_for_muay_thai: bool,
+    #[sqlx(default)]
+    pub sat_note: Option<String>,
 }

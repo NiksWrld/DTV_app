@@ -128,6 +128,61 @@ pub async fn generate_checklist(
         });
     }
 
+    // 5b. Embassies that require SAT recognition for Muay Thai camps get an extra item.
+    let wants_muay_thai = path == "soft_power"
+        && matches!(subcategory.as_deref(), None | Some("muay_thai"));
+    let embassy_requires_sat = match embassy_id {
+        Some(eid) if wants_muay_thai => sqlx::query_scalar::<_, bool>(
+            "SELECT requires_sat_for_muay_thai FROM embassies WHERE id = $1",
+        )
+        .bind(eid)
+        .fetch_optional(db)
+        .await
+        .map_err(|e| format!("Failed to load embassy rules: {}", e))?
+        .unwrap_or(false),
+        _ => false,
+    };
+    if embassy_requires_sat {
+        let sat_templates = sqlx::query_as::<_, (Uuid, String, Option<String>, bool, i32, Option<serde_json::Value>, Option<serde_json::Value>)>(
+            r#"SELECT id, title, description, required, display_order, accepted_document_types, evidence_examples
+               FROM checklist_templates WHERE visa_path = 'embassy_sat' ORDER BY display_order"#,
+        )
+        .fetch_all(db)
+        .await
+        .map_err(|e| format!("Failed to load SAT templates: {}", e))?;
+        for (template_id, title, description, required, display_order, doc_types, examples) in sat_templates {
+            let item = sqlx::query_as::<_, (Uuid,)>(
+                r#"INSERT INTO user_checklist_items
+                   (user_id, template_id, title, description, required, status, display_order, embassy_override_applied)
+                   VALUES ($1, $2, $3, $4, $5, 'missing', $6, true)
+                   RETURNING id"#,
+            )
+            .bind(user_id)
+            .bind(template_id)
+            .bind(&title)
+            .bind(&description)
+            .bind(required)
+            .bind(display_order)
+            .fetch_one(db)
+            .await
+            .map_err(|e| format!("Failed to insert SAT item: {}", e))?;
+            items.push(ChecklistItemResponse {
+                id: item.0,
+                template_id: Some(template_id),
+                title,
+                description,
+                required,
+                status: "missing".to_string(),
+                display_order,
+                accepted_document_types: doc_types,
+                evidence_examples: examples,
+                freshness_window_days: None,
+                min_balance_amount: None,
+                min_validity_days: None,
+            });
+        }
+    }
+
     // 6. Add dependent items if applicable
     if has_dependents {
         let dep_templates = sqlx::query_as::<_, (Uuid, String, Option<String>, bool, i32)>(

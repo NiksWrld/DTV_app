@@ -20,6 +20,13 @@ import { RequestLetterCard } from '@/components/providers/request-letter';
 import { ReviewsSection } from '@/components/providers/reviews-section';
 import { RatingSummary } from '@/components/providers/stars';
 import { ProviderCard } from '@/components/providers/provider-card';
+import { SatBadge, isSatValid } from '@/components/providers/sat-badge';
+import {
+  SatEmbassyNotice,
+  SatEmbassyWarning,
+  needsSatWarning,
+  useSatEmbassy,
+} from '@/components/providers/sat-embassy-warning';
 import { getRegionForCity, getBestMonths, SCORE_CONFIG } from '@/lib/weather-data';
 import type { Provider, ProviderPackage } from '@/types/dtv';
 
@@ -63,6 +70,7 @@ export default function ProviderDetailPage() {
   const [startMonth, setStartMonth] = useState('1');
   const [durationMonths, setDurationMonths] = useState('1');
   const [adding, setAdding] = useState(false);
+  const satEmbassy = useSatEmbassy();
 
   useEffect(() => {
     apiClient.account.get().then((a) => setIsAdmin(a.role === 'admin')).catch(() => setIsAdmin(false));
@@ -135,6 +143,8 @@ export default function ProviderDetailPage() {
   const colorClass = CATEGORY_COLORS[provider.category] ?? 'bg-gray-400';
   const region = getRegionForCity(provider.location ?? provider.cities_served?.[0]);
   const bestMonths = region ? getBestMonths(region) : [];
+  const satValid = isSatValid(provider.sat_certified, provider.sat_valid_until);
+  const showSatWarning = needsSatWarning(satEmbassy, provider.category, provider.sat_certified, provider.sat_valid_until);
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -172,12 +182,18 @@ export default function ProviderDetailPage() {
           {provider.supports_dtv && !provider.limited && (
             <Badge variant="outline">DTV Documents Issued</Badge>
           )}
+          <SatBadge certified={provider.sat_certified} validUntil={provider.sat_valid_until} showExpiry />
         </div>
         <p className="text-muted-foreground">
           {CATEGORY_LABELS[provider.category] ?? provider.category}
           {provider.location && ` · ${provider.location}`}
         </p>
         <RatingSummary average={provider.rating_avg} count={provider.rating_count} />
+        {satValid && provider.sat_certificate_number && (
+          <p className="text-xs text-indigo-800">
+            Sports Authority of Thailand certificate no. {provider.sat_certificate_number}
+          </p>
+        )}
         {provider.cities_served && provider.cities_served.length > 0 && (
           <div className="flex gap-1 flex-wrap">
             {provider.cities_served.map((c) => (
@@ -186,6 +202,8 @@ export default function ProviderDetailPage() {
           </div>
         )}
       </div>
+
+      {showSatWarning && satEmbassy && <SatEmbassyWarning embassy={satEmbassy} provider={provider} />}
 
       {provider.limited && (
         <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/40">
@@ -254,7 +272,10 @@ export default function ProviderDetailPage() {
       )}
 
       {provider.listing_type === 'dtv_program' && !provider.limited && (
-        <RequestLetterCard provider={provider} packages={packages} />
+        <div className="space-y-2">
+          {showSatWarning && satEmbassy && <SatEmbassyNotice embassy={satEmbassy} />}
+          <RequestLetterCard provider={provider} packages={packages} />
+        </div>
       )}
 
       <ReviewsSection providerId={provider.id} />
@@ -355,6 +376,7 @@ export default function ProviderDetailPage() {
       {provider.listing_type === 'dtv_program' && (
         <div className="border rounded-lg p-4 space-y-4">
           <h2 className="font-semibold">Add to My Plan</h2>
+          {showSatWarning && satEmbassy && <SatEmbassyNotice embassy={satEmbassy} />}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Start month</Label>

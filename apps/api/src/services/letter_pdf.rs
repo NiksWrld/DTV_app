@@ -22,6 +22,13 @@ pub struct LetterData {
     pub hours_per_week: f64,
     pub fees_paid: Option<f64>,
     pub currency: String,
+    /// Set when the provider holds admin-verified, unexpired SAT recognition.
+    pub sat: Option<SatRecognition>,
+}
+
+pub struct SatRecognition {
+    pub certificate_number: Option<String>,
+    pub valid_until: Option<NaiveDate>,
 }
 
 const PAGE_W: f64 = 595.28; // A4 in points
@@ -246,6 +253,17 @@ pub fn render(letter: &LetterData) -> Vec<u8> {
         },
     );
 
+    if let Some(sat) = &letter.sat {
+        let mut value = "Recognised by the Sports Authority of Thailand (SAT)".to_string();
+        if let Some(number) = sat.certificate_number.as_deref().filter(|n| !n.trim().is_empty()) {
+            value.push_str(&format!(", certificate no. {number}"));
+        }
+        if let Some(until) = sat.valid_until {
+            value.push_str(&format!(", valid until {}", long_date(until)));
+        }
+        page.row("SAT recognition", &value);
+    }
+
     page.gap(16.0);
     page.paragraph(
         10.5,
@@ -343,6 +361,10 @@ mod tests {
             hours_per_week: 12.0,
             fees_paid: Some(82000.0),
             currency: "THB".into(),
+            sat: Some(SatRecognition {
+                certificate_number: Some("SAT-6701234".into()),
+                valid_until: NaiveDate::from_ymd_opt(2027, 12, 31),
+            }),
         }
     }
 
@@ -354,6 +376,7 @@ mod tests {
         let text = String::from_utf8_lossy(&pdf);
         assert!(text.contains("Tiger \\(Muay\\) Thai"));
         assert!(text.contains("82,000"));
+        assert!(text.contains("SAT-6701234"));
         // xref offset points at the xref keyword
         let start = text.rfind("startxref\n").unwrap() + "startxref\n".len();
         let offset: usize = text[start..].lines().next().unwrap().trim().parse().unwrap();

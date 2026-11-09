@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { SafeImage } from '@/components/safe-image';
 import { RatingSummary } from '@/components/providers/stars';
+import { SatBadge } from '@/components/providers/sat-badge';
 import type { Provider } from '@/types/dtv';
 
 export const CATEGORY_LABELS: Record<string, string> = {
@@ -62,6 +63,7 @@ export function ProviderCard({ provider }: { provider: Provider }) {
             {provider.verification_status === 'verified_docs_seen' && !provider.limited && (
               <Badge variant="secondary" className="text-xs">Verified DTV partner</Badge>
             )}
+            <SatBadge certified={provider.sat_certified} validUntil={provider.sat_valid_until} />
           </div>
         </div>
         <p className="text-xs text-muted-foreground">

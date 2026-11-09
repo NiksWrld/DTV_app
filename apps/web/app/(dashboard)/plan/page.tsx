@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { apiClient } from '@/lib/api-client';
 import { getRegionForCity, SCORE_CONFIG, type RegionWeather } from '@/lib/weather-data';
+import { SatBadge } from '@/components/providers/sat-badge';
+import { SatEmbassyNotice, needsSatWarning, useSatEmbassy } from '@/components/providers/sat-embassy-warning';
 import type { PlanItem } from '@/types/dtv';
 
 // Category colors stay clear of the weather palette (green / yellow / orange / red),
@@ -54,6 +56,7 @@ export default function PlanPage() {
   const [items, setItems] = useState<PlanItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalMonths, setTotalMonths] = useState(12);
+  const satEmbassy = useSatEmbassy();
 
   useEffect(() => {
     apiClient.plan.list().then(setItems).finally(() => setLoading(false));
@@ -220,6 +223,11 @@ export default function PlanPage() {
                         {CATEGORY_LABELS[item.provider_category] ?? item.provider_category}
                         {item.provider_location && ` · ${item.provider_location}`}
                       </p>
+                      <SatBadge
+                        certified={item.provider_sat_certified}
+                        validUntil={item.provider_sat_valid_until}
+                        className="mt-0.5"
+                      />
                     </div>
 
                     {/* Bar grid: each active month shows the weather at this provider's location */}
@@ -381,6 +389,23 @@ export default function PlanPage() {
                       {' · '}{item.duration_months} month{item.duration_months !== 1 ? 's' : ''}
                       {item.provider_location && ` · ${item.provider_location}`}
                     </p>
+                    <SatBadge
+                      certified={item.provider_sat_certified}
+                      validUntil={item.provider_sat_valid_until}
+                      showExpiry
+                      className="mt-1"
+                    />
+                    {needsSatWarning(
+                      satEmbassy,
+                      item.provider_category,
+                      item.provider_sat_certified,
+                      item.provider_sat_valid_until,
+                    ) &&
+                      satEmbassy && (
+                        <div className="mt-1.5">
+                          <SatEmbassyNotice embassy={satEmbassy} />
+                        </div>
+                      )}
                   </div>
                   {tier && (
                     <Badge variant="outline" className="text-xs shrink-0">

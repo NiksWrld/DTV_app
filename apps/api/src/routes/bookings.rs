@@ -294,6 +294,9 @@ struct LetterContext {
     reference_code: Option<String>,
     status: String,
     letter_document_id: Option<Uuid>,
+    sat_certified: bool,
+    sat_certificate_number: Option<String>,
+    sat_valid_until: Option<NaiveDate>,
 }
 
 /// Approve a request: save the course details, generate the PDF letter, store it,
@@ -329,7 +332,9 @@ pub async fn approve_request(
         r#"SELECT p.name AS provider_name, p.category AS provider_category, p.location,
                   p.contact_email, p.contact_phone,
                   b.user_id, u.display_name, u.email, ap.nationality, ap.passport_number,
-                  b.reference_code, b.status, b.letter_document_id
+                  b.reference_code, b.status, b.letter_document_id,
+                  (p.sat_status = 'approved' AND (p.sat_valid_until IS NULL OR p.sat_valid_until >= CURRENT_DATE)) AS sat_certified,
+                  p.sat_certificate_number, p.sat_valid_until
            FROM provider_bookings b
            JOIN providers p ON p.id = b.provider_id
            JOIN users u ON u.id = b.user_id
@@ -380,6 +385,10 @@ pub async fn approve_request(
         hours_per_week: body.hours_per_week,
         fees_paid: body.fees_paid,
         currency: currency.clone(),
+        sat: ctx.sat_certified.then(|| letter_pdf::SatRecognition {
+            certificate_number: ctx.sat_certificate_number.clone(),
+            valid_until: ctx.sat_valid_until,
+        }),
     });
 
     // Provider's copy, kept with the request.

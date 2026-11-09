@@ -3,8 +3,10 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { apiClient } from '@/lib/api-client';
-import type { AppSettings } from '@/types/dtv';
+import type { AppSettings, Embassy } from '@/types/dtv';
 
 function Toggle({
   id,
@@ -34,6 +36,100 @@ function Toggle({
         className={`inline-block size-5 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-6' : 'translate-x-1'}`}
       />
     </button>
+  );
+}
+
+function EmbassyRuleRow({ embassy, onSaved }: { embassy: Embassy; onSaved: (next: Embassy) => void }) {
+  const [note, setNote] = useState(embassy.sat_note ?? '');
+  const [saving, setSaving] = useState(false);
+  const toggleId = `sat-rule-${embassy.id}`;
+
+  async function save(requires: boolean, nextNote: string) {
+    setSaving(true);
+    try {
+      onSaved(await apiClient.admin.sat.embassyRule(embassy.id, { requires_sat_for_muay_thai: requires, sat_note: nextNote }));
+      toast.success('Embassy rule saved');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not save');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <li className="space-y-2 border-b py-3 last:border-0">
+      <div className="flex items-center justify-between gap-4">
+        <label htmlFor={toggleId} className="min-w-0 text-sm">
+          <span className="font-medium">{embassy.country}, {embassy.city}</span>
+          <span className="block text-xs text-muted-foreground">{embassy.name}</span>
+        </label>
+        <Toggle
+          id={toggleId}
+          checked={Boolean(embassy.requires_sat_for_muay_thai)}
+          disabled={saving}
+          onChange={(value) => save(value, note)}
+        />
+      </div>
+      {embassy.requires_sat_for_muay_thai && (
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Input
+            aria-label={`Note for ${embassy.name}`}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Note shown to applicants, e.g. where the rule comes from"
+          />
+          <Button size="sm" variant="outline" disabled={saving || note === (embassy.sat_note ?? '')} onClick={() => save(true, note)}>
+            Save note
+          </Button>
+        </div>
+      )}
+    </li>
+  );
+}
+
+function EmbassyRulesCard() {
+  const [embassies, setEmbassies] = useState<Embassy[]>([]);
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    apiClient.embassies.list().then(setEmbassies).catch(() => toast.error('Could not load embassies'));
+  }, []);
+
+  const q = search.trim().toLowerCase();
+  const visible = embassies
+    .filter((e) => (q ? `${e.country} ${e.city} ${e.name}`.toLowerCase().includes(q) : e.requires_sat_for_muay_thai))
+    .sort((a, b) => Number(Boolean(b.requires_sat_for_muay_thai)) - Number(Boolean(a.requires_sat_for_muay_thai)));
+  const active = embassies.filter((e) => e.requires_sat_for_muay_thai).length;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Embassies that require a SAT-certified Muay Thai camp</CardTitle>
+        <CardDescription>
+          Applicants who picked one of these embassies get a warning on Muay Thai camps without valid SAT
+          certification and an extra checklist item. Embassy rules change, so check them from time to time.
+          {' '}{active} active.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <Input
+          placeholder="Search embassies to add one…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          aria-label="Search embassies"
+        />
+        <ul>
+          {visible.slice(0, 50).map((embassy) => (
+            <EmbassyRuleRow
+              key={embassy.id}
+              embassy={embassy}
+              onSaved={(next) => setEmbassies((prev) => prev.map((e) => (e.id === next.id ? next : e)))}
+            />
+          ))}
+        </ul>
+        {visible.length === 0 && <p className="text-sm text-muted-foreground">No embassies match.</p>}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -93,6 +189,8 @@ export default function AdminSettingsPage() {
           </p>
         </CardContent>
       </Card>
+
+      <EmbassyRulesCard />
     </div>
   );
 }

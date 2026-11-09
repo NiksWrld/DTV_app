@@ -16,7 +16,10 @@ const PROVIDER_COLS: &str = r#"
     pricing, image_url, location, listing_type, dtv_certified, created_at,
     (claim_status = 'approved' AND verification_status IN ('verified_docs_seen', 'featured')) AS is_partner,
     (SELECT AVG(r.rating)::float8 FROM provider_reviews r WHERE r.provider_id = providers.id AND NOT r.hidden) AS rating_avg,
-    (SELECT COUNT(*) FROM provider_reviews r WHERE r.provider_id = providers.id AND NOT r.hidden) AS rating_count
+    (SELECT COUNT(*) FROM provider_reviews r WHERE r.provider_id = providers.id AND NOT r.hidden) AS rating_count,
+    (sat_status = 'approved' AND (sat_valid_until IS NULL OR sat_valid_until >= CURRENT_DATE)) AS sat_certified,
+    CASE WHEN sat_status = 'approved' AND (sat_valid_until IS NULL OR sat_valid_until >= CURRENT_DATE) THEN sat_certificate_number END AS sat_certificate_number,
+    CASE WHEN sat_status = 'approved' THEN sat_valid_until END AS sat_valid_until
 "#;
 
 #[derive(serde::Deserialize)]
@@ -24,6 +27,8 @@ pub struct ProviderQuery {
     category: Option<String>,
     city: Option<String>,
     path: Option<String>,
+    /// "1" / "true": only providers with valid SAT recognition.
+    sat: Option<String>,
 }
 
 pub async fn list_providers(
@@ -50,6 +55,10 @@ pub async fn list_providers(
         qb.push(" AND ");
         qb.push_bind(path.clone());
         qb.push(" = ANY(dtv_path_relevance)");
+    }
+    if matches!(query.sat.as_deref(), Some("1") | Some("true")) {
+        qb.push(" AND ");
+        qb.push(crate::routes::sat::SAT_CERTIFIED_SQL);
     }
     qb.push(" ORDER BY name");
 
@@ -183,6 +192,8 @@ const PLAN_JOIN: &str = r#"
       pr.image_url AS provider_image_url,
       pr.pricing AS provider_pricing,
       (pr.claim_status = 'approved' AND pr.verification_status IN ('verified_docs_seen', 'featured')) AS provider_is_partner,
+      (pr.sat_status = 'approved' AND (pr.sat_valid_until IS NULL OR pr.sat_valid_until >= CURRENT_DATE)) AS provider_sat_certified,
+      CASE WHEN pr.sat_status = 'approved' THEN pr.sat_valid_until END AS provider_sat_valid_until,
       p.start_month, p.duration_months, p.notes
     FROM user_plan_items p
     JOIN providers pr ON pr.id = p.provider_id

@@ -57,7 +57,7 @@ export function ProviderCard({ provider }: { provider: Provider }) {
               <Badge variant="secondary" className="text-xs">Affiliate</Badge>
             )}
             {provider.verification_status === 'verified_docs_seen' && (
-              <Badge variant="secondary" className="text-xs">Verified</Badge>
+              <Badge variant="secondary" className="text-xs">Verified DTV partner</Badge>
             )}
           </div>
         </div>

@@ -157,12 +157,16 @@ export default function AdminProvidersPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [claims, setClaims] = useState<Array<{ id: string; name: string; location?: string; owner_email?: string }>>([]);
 
   function load() {
     apiClient.admin.providers.list().then(setProviders).finally(() => setLoading(false));
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    apiClient.admin.claims.list().then(setClaims).catch(() => setClaims([]));
+  }, []);
 
   async function handleDelete(p: Provider) {
     if (!confirm(`Delete "${p.name}"? This cannot be undone.`)) return;
@@ -199,6 +203,28 @@ export default function AdminProvidersPage() {
           <Button className="w-full sm:w-auto">+ New provider</Button>
         </Link>
       </div>
+
+      {claims.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">Pending claims</h2>
+          {claims.map((claim) => (
+            <div key={claim.id} className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="font-medium break-words">{claim.name}</p>
+                <p className="text-sm text-muted-foreground">{claim.owner_email || 'No email'}{claim.location ? ` · ${claim.location}` : ''}</p>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={() => apiClient.admin.claims.review(claim.id, 'approve').then(() => setClaims((prev) => prev.filter((c) => c.id !== claim.id)))}>
+                  Verify
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => apiClient.admin.claims.review(claim.id, 'reject').then(() => setClaims((prev) => prev.filter((c) => c.id !== claim.id)))}>
+                  Reject
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <Input
         placeholder="Search by name, category, city…"

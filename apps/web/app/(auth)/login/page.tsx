@@ -34,7 +34,7 @@ export default function LoginPage() {
 
       const data = await res.json();
       localStorage.setItem('token', data.token);
-      router.push('/dashboard');
+      router.push(data.user?.role === 'provider' ? '/provider' : '/dashboard');
     } catch {
       toast.error('Connection error. Please try again.');
     } finally {

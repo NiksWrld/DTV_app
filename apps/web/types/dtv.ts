@@ -126,6 +126,32 @@ export interface Provider {
   dtv_certified: boolean;
 }
 
+export interface OwnedListing {
+  id: string;
+  name: string;
+  category: string;
+  description?: string;
+  location?: string;
+  contact_email?: string;
+  contact_phone?: string;
+  verification_status: string;
+  claim_status: string;
+  image_url?: string;
+  photo_urls?: string[];
+  listing_type: string;
+  dtv_certified: boolean;
+}
+
+export interface ProviderPackage {
+  id: string;
+  provider_id: string;
+  name: string;
+  description?: string;
+  price_amount?: number;
+  currency: string;
+  duration_days?: number;
+}
+
 export interface PlanItem {
   id: string;
   provider_id: string;

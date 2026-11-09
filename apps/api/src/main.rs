@@ -116,6 +116,7 @@ async fn main() {
 
     let public_routes = Router::new()
         .route("/api/auth/register", post(routes::auth::register))
+        .route("/api/auth/register-provider", post(routes::auth::register_provider))
         .route("/api/auth/login", post(routes::auth::login))
         .route("/api/health", get(|| async { "ok" }));
 
@@ -135,6 +136,13 @@ async fn main() {
         .route("/api/providers", get(routes::providers::list_providers))
         .route("/api/providers/categories", get(routes::providers::list_categories))
         .route("/api/providers/:id", get(routes::providers::get_provider))
+        .route("/api/providers/:id/packages", get(routes::provider_portal::list_packages))
+        .route("/api/provider/me", get(routes::provider_portal::get_mine).put(routes::provider_portal::update_listing).post(routes::provider_portal::create_listing))
+        .route("/api/provider/claimable", get(routes::provider_portal::search_claimable))
+        .route("/api/provider/claim", post(routes::provider_portal::claim_listing))
+        .route("/api/provider/packages", post(routes::provider_portal::add_package))
+        .route("/api/provider/packages/:id", delete(routes::provider_portal::delete_package))
+        .route("/api/provider/photos", post(routes::provider_portal::upload_photo))
         .route("/api/plan", get(routes::providers::list_plan).post(routes::providers::add_plan_item))
         .route("/api/plan/:id", put(routes::providers::update_plan_item).delete(routes::providers::delete_plan_item))
         .route("/api/guides", get(routes::guides::list_guides))
@@ -161,6 +169,8 @@ async fn main() {
         .route("/api/admin/embassy-overrides", post(routes::admin::create_override))
         .route("/api/admin/providers", get(routes::admin::list_providers_admin).post(routes::admin::create_provider))
         .route("/api/admin/providers/:id/verify", put(routes::admin::verify_provider))
+        .route("/api/admin/provider-claims", get(routes::provider_portal::list_pending_claims))
+        .route("/api/admin/provider-claims/:id", post(routes::provider_portal::review_claim))
         .route("/api/admin/providers/:id", put(routes::admin::update_provider).delete(routes::admin::delete_provider))
         .route("/api/admin/users", get(routes::admin::list_users_admin))
         .route("/api/admin/users/:id", put(routes::admin::update_user_role))

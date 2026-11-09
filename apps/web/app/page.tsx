@@ -140,7 +140,13 @@ export default function LandingPage() {
             <ul className="mt-4 space-y-3 text-sm leading-relaxed text-muted-foreground">
               <li>Your checklist and uploads stay on your account. This app does not submit the visa for you.</li>
               <li>Embassy suggestions follow the country and city where you are now, and you can override them.</li>
-              <li>Schools and gyms can list programs. A verified badge only appears after an admin reviews the listing.</li>
+              <li>
+                Schools and gyms can{' '}
+                <Link href="/list-your-school" className="text-primary underline underline-offset-2">
+                  list a program
+                </Link>
+                . A verified badge only appears after an admin reviews the listing.
+              </li>
             </ul>
           </div>
         </section>

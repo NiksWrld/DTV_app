@@ -67,9 +67,17 @@ export default function DashboardLayout({
       router.replace('/login');
       return;
     }
-    apiClient.account.get().then((a) =>
-      setAcct({ display_name: a.display_name, email: a.email, avatar_url: a.avatar_url, role: a.role })
-    ).catch(() => {}).finally(() => setChecked(true));
+    let leave = false;
+    apiClient.account.get().then((a) => {
+      if (a.role === 'provider') {
+        leave = true;
+        router.replace('/provider');
+        return;
+      }
+      setAcct({ display_name: a.display_name, email: a.email, avatar_url: a.avatar_url, role: a.role });
+    }).catch(() => {}).finally(() => {
+      if (!leave) setChecked(true);
+    });
   }, [router]);
 
   if (!checked) return null;

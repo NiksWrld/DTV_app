@@ -16,7 +16,7 @@ import {
 import { toast } from 'sonner';
 import { apiClient } from '@/lib/api-client';
 import { getRegionForCity, getBestMonths, SCORE_CONFIG } from '@/lib/weather-data';
-import type { Provider } from '@/types/dtv';
+import type { Provider, ProviderPackage } from '@/types/dtv';
 
 const CATEGORY_LABELS: Record<string, string> = {
   muay_thai_gym: 'Muay Thai',
@@ -45,6 +45,7 @@ export default function ProviderDetailPage() {
   const router = useRouter();
 
   const [provider, setProvider] = useState<Provider | null>(null);
+  const [packages, setPackages] = useState<ProviderPackage[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Editable fields
@@ -58,6 +59,7 @@ export default function ProviderDetailPage() {
   const [adding, setAdding] = useState(false);
 
   useEffect(() => {
+    apiClient.providerPortal.packages(id).then(setPackages).catch(() => setPackages([]));
     apiClient.providers.get(id).then((p) => {
       setProvider(p);
       setImageUrlInput(p.image_url ?? '');
@@ -197,6 +199,21 @@ export default function ProviderDetailPage() {
           ) : (
             <p className="text-sm text-muted-foreground">{provider.pricing.note}</p>
           )}
+        </div>
+      )}
+
+      {packages.length > 0 && (
+        <div className="space-y-2 rounded-lg border p-4">
+          <h2 className="font-semibold">Packages</h2>
+          {packages.map((item) => (
+            <div key={item.id} className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
+              <span className="font-medium">{item.name}</span>
+              <span className="text-muted-foreground">
+                {item.price_amount != null ? `${item.currency} ${item.price_amount.toLocaleString()}` : 'Ask'}
+                {item.duration_days ? ` · ${item.duration_days} days` : ''}
+              </span>
+            </div>
+          ))}
         </div>
       )}
 

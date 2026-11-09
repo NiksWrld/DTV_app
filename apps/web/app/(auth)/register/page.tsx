@@ -47,7 +47,7 @@ export default function RegisterPage() {
 
       const data = await res.json();
       localStorage.setItem('token', data.token);
-      router.push('/onboarding');
+      router.push(data.user?.role === 'provider' ? '/provider' : '/onboarding');
     } catch {
       toast.error('Connection error. Please try again.');
     } finally {

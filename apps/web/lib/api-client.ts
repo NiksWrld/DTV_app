@@ -44,7 +44,30 @@ export const apiClient = {
         { email, password },
       ),
     me: () =>
-      request<{ id: string; email: string }>('GET', '/api/auth/me'),
+      request<{ id: string; email: string; role?: string }>('GET', '/api/auth/me'),
+  },
+  providerPortal: {
+    me: () =>
+      request<{
+        listing: import('@/types/dtv').OwnedListing | null;
+        packages: import('@/types/dtv').ProviderPackage[];
+      }>('GET', '/api/provider/me'),
+    create: (data: Record<string, unknown>) =>
+      request<import('@/types/dtv').OwnedListing>('POST', '/api/provider/me', data),
+    save: (data: Record<string, unknown>) =>
+      request<import('@/types/dtv').OwnedListing>('PUT', '/api/provider/me', data),
+    claimable: (q: string) =>
+      request<Array<{ id: string; name: string; category: string; location?: string; claim_status: string }>>(
+        'GET',
+        `/api/provider/claimable?q=${encodeURIComponent(q)}`,
+      ),
+    claim: (provider_id: string) =>
+      request<import('@/types/dtv').OwnedListing>('POST', '/api/provider/claim', { provider_id }),
+    addPackage: (data: Record<string, unknown>) =>
+      request<import('@/types/dtv').ProviderPackage>('POST', '/api/provider/packages', data),
+    removePackage: (id: string) => request<void>('DELETE', `/api/provider/packages/${id}`),
+    packages: (providerId: string) =>
+      request<import('@/types/dtv').ProviderPackage[]>('GET', `/api/providers/${providerId}/packages`),
   },
   onboarding: {
     getProfile: () =>
@@ -141,6 +164,15 @@ export const apiClient = {
         ),
       updateRole: (id: string, role: string) =>
         request('PUT', `/api/admin/users/${id}`, { role }),
+    },
+    claims: {
+      list: () =>
+        request<Array<{ id: string; name: string; category: string; location?: string; claim_status: string; owner_email?: string }>>(
+          'GET',
+          '/api/admin/provider-claims',
+        ),
+      review: (id: string, action: 'approve' | 'reject') =>
+        request('POST', `/api/admin/provider-claims/${id}`, { action }),
     },
   },
   compliance: {

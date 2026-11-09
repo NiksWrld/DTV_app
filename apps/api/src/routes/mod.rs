@@ -2,6 +2,7 @@ pub mod auth;
 pub mod onboarding;
 pub mod checklist;
 pub mod documents;
+pub mod provider_portal;
 pub mod providers;
 pub mod guides;
 pub mod review;

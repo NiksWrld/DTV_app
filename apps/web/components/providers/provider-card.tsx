@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { SafeImage } from '@/components/safe-image';
+import { RatingSummary } from '@/components/providers/stars';
 import type { Provider } from '@/types/dtv';
 
 export const CATEGORY_LABELS: Record<string, string> = {
@@ -67,6 +68,7 @@ export function ProviderCard({ provider }: { provider: Provider }) {
           {CATEGORY_LABELS[provider.category] ?? provider.category}
           {provider.location && ` · ${provider.location}`}
         </p>
+        <RatingSummary average={provider.rating_avg} count={provider.rating_count} />
         {provider.description && (
           <p className="text-sm text-muted-foreground line-clamp-2">{provider.description}</p>
         )}

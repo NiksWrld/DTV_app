@@ -14,7 +14,9 @@ const PROVIDER_COLS: &str = r#"
     documents_they_issue, supports_dtv, verification_status, affiliate_type,
     lead_capture_settings, external_url, admin_evidence_attachments,
     pricing, image_url, location, listing_type, dtv_certified, created_at,
-    (claim_status = 'approved' AND verification_status IN ('verified_docs_seen', 'featured')) AS is_partner
+    (claim_status = 'approved' AND verification_status IN ('verified_docs_seen', 'featured')) AS is_partner,
+    (SELECT AVG(r.rating)::float8 FROM provider_reviews r WHERE r.provider_id = providers.id AND NOT r.hidden) AS rating_avg,
+    (SELECT COUNT(*) FROM provider_reviews r WHERE r.provider_id = providers.id AND NOT r.hidden) AS rating_count
 "#;
 
 #[derive(serde::Deserialize)]

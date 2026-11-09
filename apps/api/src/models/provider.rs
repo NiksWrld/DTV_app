@@ -27,6 +27,11 @@ pub struct Provider {
     /// Claimed and verified: can issue DTV letters through the app.
     #[sqlx(default)]
     pub is_partner: bool,
+    /// Average of visible reviews (verified bookings only).
+    #[sqlx(default)]
+    pub rating_avg: Option<f64>,
+    #[sqlx(default)]
+    pub rating_count: i64,
 }
 
 #[derive(Debug, FromRow, Serialize)]

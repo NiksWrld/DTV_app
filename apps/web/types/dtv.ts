@@ -125,6 +125,31 @@ export interface Provider {
   listing_type: ListingType;
   dtv_certified: boolean;
   is_partner?: boolean;
+  rating_avg?: number | null;
+  rating_count?: number;
+}
+
+export interface Review {
+  id: string;
+  booking_id: string;
+  provider_id: string;
+  provider_name: string;
+  rating: number;
+  body?: string | null;
+  reviewer_name: string;
+  course_name?: string | null;
+  provider_reply?: string | null;
+  replied_at?: string | null;
+  hidden: boolean;
+  verified_booking: boolean;
+  created_at: string;
+  reviewer_email?: string;
+}
+
+export interface ReviewSummary {
+  average: number | null;
+  count: number;
+  reviews: Review[];
 }
 
 export type BookingStatus = 'requested' | 'confirmed' | 'completed' | 'declined' | 'cancelled';

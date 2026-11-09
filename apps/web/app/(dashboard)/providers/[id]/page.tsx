@@ -17,6 +17,8 @@ import { toast } from 'sonner';
 import { apiClient } from '@/lib/api-client';
 import { SafeImage } from '@/components/safe-image';
 import { RequestLetterCard } from '@/components/providers/request-letter';
+import { ReviewsSection } from '@/components/providers/reviews-section';
+import { RatingSummary } from '@/components/providers/stars';
 import { getRegionForCity, getBestMonths, SCORE_CONFIG } from '@/lib/weather-data';
 import type { Provider, ProviderPackage } from '@/types/dtv';
 
@@ -169,6 +171,7 @@ export default function ProviderDetailPage() {
           {CATEGORY_LABELS[provider.category] ?? provider.category}
           {provider.location && ` · ${provider.location}`}
         </p>
+        <RatingSummary average={provider.rating_avg} count={provider.rating_count} />
         {provider.cities_served && provider.cities_served.length > 0 && (
           <div className="flex gap-1 flex-wrap">
             {provider.cities_served.map((c) => (
@@ -225,6 +228,8 @@ export default function ProviderDetailPage() {
       {provider.listing_type === 'dtv_program' && (
         <RequestLetterCard provider={provider} packages={packages} />
       )}
+
+      <ReviewsSection providerId={provider.id} />
 
       {/* Weather */}
       {region && (

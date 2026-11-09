@@ -71,7 +71,7 @@ const BOOKING_SELECT: &str = r#"
            b.reference_code, b.letter_document_id,
            (b.letter_storage_key IS NOT NULL) AS has_letter,
            b.decline_reason, b.issued_at,
-           false AS has_review,
+           EXISTS (SELECT 1 FROM provider_reviews r WHERE r.booking_id = b.id) AS has_review,
            b.created_at
     FROM provider_bookings b
     JOIN providers p ON p.id = b.provider_id

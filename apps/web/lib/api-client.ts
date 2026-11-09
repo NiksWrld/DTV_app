@@ -88,6 +88,15 @@ export const apiClient = {
       request<import('@/types/dtv').Booking>('POST', `/api/bookings/${id}/cancel`, {}),
     letter: (id: string) =>
       request<{ url: string; filename: string }>('GET', `/api/bookings/${id}/letter`),
+    review: (id: string, data: { rating: number; body?: string }) =>
+      request<import('@/types/dtv').Review>('POST', `/api/bookings/${id}/review`, data),
+  },
+  reviews: {
+    forProvider: (providerId: string) =>
+      request<import('@/types/dtv').ReviewSummary>('GET', `/api/providers/${providerId}/reviews`),
+    mine: () => request<import('@/types/dtv').Review[]>('GET', '/api/provider/reviews'),
+    reply: (id: string, reply: string) =>
+      request<import('@/types/dtv').Review>('POST', `/api/provider/reviews/${id}/reply`, { reply }),
   },
   onboarding: {
     getProfile: () =>
@@ -186,6 +195,11 @@ export const apiClient = {
         request('PUT', `/api/admin/providers/${id}/verify`, { verification_status: status }),
       stats: () =>
         request<import('@/types/dtv').ProviderViewRow[]>('GET', '/api/admin/provider-stats'),
+    },
+    reviews: {
+      list: () => request<import('@/types/dtv').Review[]>('GET', '/api/admin/reviews'),
+      setHidden: (id: string, hidden: boolean) =>
+        request<import('@/types/dtv').Review>('PUT', `/api/admin/reviews/${id}`, { hidden }),
     },
     users: {
       list: () =>

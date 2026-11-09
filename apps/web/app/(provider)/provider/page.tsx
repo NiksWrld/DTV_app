@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { apiClient } from '@/lib/api-client';
 import { SafeImage } from '@/components/safe-image';
 import { LetterRequestsCard } from '@/components/providers/letter-requests';
+import { ProviderReviewsCard } from '@/components/providers/provider-reviews-card';
 import type { OwnedListing, ProviderPackage, ViewStats } from '@/types/dtv';
 
 const CATEGORIES = [
@@ -203,6 +204,8 @@ export default function ProviderDashboardPage() {
           isPartner={listing.claim_status === 'approved' && ['verified_docs_seen', 'featured'].includes(listing.verification_status)}
         />
       )}
+
+      {listing && <ProviderReviewsCard />}
 
       {listing && (
         <>

@@ -3,13 +3,14 @@
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, Store, Users } from 'lucide-react';
+import { LayoutDashboard, Star, Store, Users } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { apiClient } from '@/lib/api-client';
 
 const adminNav = [
   { href: '/admin', label: 'Overview', icon: LayoutDashboard },
   { href: '/admin/providers', label: 'Providers', icon: Store },
+  { href: '/admin/reviews', label: 'Reviews', icon: Star },
   { href: '/admin/users', label: 'Users', icon: Users },
 ];
 
@@ -82,7 +83,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
           aria-label="Admin"
         >
-          <div className="grid grid-cols-3">
+          <div className="grid grid-cols-4">
             {adminNav.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.href, pathname);

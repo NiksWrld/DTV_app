@@ -11,3 +11,4 @@ pub mod account;
 pub mod compliance;
 pub mod provider_stats;
 pub mod bookings;
+pub mod reviews;
